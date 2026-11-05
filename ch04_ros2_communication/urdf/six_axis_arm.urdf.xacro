@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<!-- Liste 24 - 6-eksenli robot kol, flanş (tool0) ve parametrik TCP modeli.
+     Tüm eklemler sıfırdayken: tool0 = (0.515, 0, 0.900) m,
+     tcp_link = tool0 + tcp_offset_z (varsayılan 0.145 m) -> (0.660, 0, 0.900) m. -->
+<robot name="six_axis_manipulator" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Başlatma dosyasından ezilebilir TCP Z-ofset argümanı [m] -->
+  <xacro:arg name="tcp_offset_z" default="0.145"/>
+
+  <link name="world"/>
+  <link name="base_link"/>
+  <joint name="world_to_base" type="fixed">
+    <parent link="world"/> <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 6-Eksenli Kinematik Zincir: link_1 .. link_6 ve tool0 (Flanş) -->
+  <link name="link_1"/> <link name="link_2"/> <link name="link_3"/>
+  <link name="link_4"/> <link name="link_5"/> <link name="link_6"/>
+
+  <joint name="joint_1" type="revolute">
+    <parent link="base_link"/> <child link="link_1"/>
+    <origin xyz="0 0 0.160" rpy="0 0 0"/> <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" effort="150" velocity="2.5"/>
+  </joint>
+  <joint name="joint_2" type="revolute">
+    <parent link="link_1"/> <child link="link_2"/>
+    <origin xyz="0 0 0.200" rpy="0 0 0"/> <axis xyz="0 1 0"/>
+    <limit lower="${-pi/2}" upper="${pi/2}" effort="150" velocity="2.5"/>
+  </joint>
+  <joint name="joint_3" type="revolute">
+    <parent link="link_2"/> <child link="link_3"/>
+    <origin xyz="0 0 0.420" rpy="0 0 0"/> <axis xyz="0 1 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="100" velocity="3.0"/>
+  </joint>
+  <joint name="joint_4" type="revolute">
+    <parent link="link_3"/> <child link="link_4"/>
+    <origin xyz="0.090 0 0.120" rpy="0 0 0"/> <axis xyz="1 0 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="50" velocity="3.5"/>
+  </joint>
+  <joint name="joint_5" type="revolute">
+    <parent link="link_4"/> <child link="link_5"/>
+    <origin xyz="0.300 0 0" rpy="0 0 0"/> <axis xyz="0 1 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="50" velocity="3.5"/>
+  </joint>
+  <joint name="joint_6" type="revolute">
+    <parent link="link_5"/> <child link="link_6"/>
+    <origin xyz="0.085 0 0" rpy="0 0 0"/> <axis xyz="1 0 0"/>
+    <limit lower="${-2*pi}" upper="${2*pi}" effort="30" velocity="4.0"/>
+  </joint>
+
+  <!-- Standart mekanik bilek flanşı (tool0). Döndürme, flanşın +Z ekseninin
+       takımın baktığı yönü (burada tabanın +X yönü) göstermesini sağlar. -->
+  <link name="tool0"/>
+  <joint name="link_6_to_tool0" type="fixed">
+    <parent link="link_6"/> <child link="tool0"/>
+    <origin xyz="0.040 0 0" rpy="0 ${pi/2} 0"/>
+  </joint>
+
+  <!-- Uç İşlevci Merkezi (TCP - Tool Center Point) -->
+  <link name="tcp_link"/>
+  <joint name="tool0_to_tcp" type="fixed">
+    <parent link="tool0"/> <child link="tcp_link"/>
+    <origin xyz="0 0 $(arg tcp_offset_z)" rpy="0 0 0"/>
+  </joint>
+
+</robot>

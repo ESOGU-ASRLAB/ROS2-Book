@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<!-- Liste 19 - Xacro özellikleri ve makrolarıyla temel kol modeli.
+     İki dönel eklemli bir kol ve ucunda bir kamera (gövde + optik çerçeve). -->
+<robot name="mini_arm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <material name="grey"><color rgba="0.6 0.6 0.6 1"/></material>
+  <material name="blue"><color rgba="0.2 0.4 0.7 1"/></material>
+
+  <!-- Boyutlar tek yerde tanımlanır; değiştirilince tüm model güncellenir [m] -->
+  <xacro:property name="base_length" value="0.10"/>
+  <xacro:property name="arm1_length" value="0.30"/>
+  <xacro:property name="arm2_length" value="0.26"/>
+
+  <!-- Tabanı orijinde duran dik bir silindir bağlantısı üreten makro -->
+  <xacro:macro name="cylinder_link" params="name length radius color">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 ${length/2}"/>
+        <geometry><cylinder length="${length}" radius="${radius}"/></geometry>
+        <material name="${color}"/>
+      </visual>
+    </link>
+  </xacro:macro>
+
+  <xacro:cylinder_link name="base_link" length="${base_length}" radius="0.08"  color="grey"/>
+  <xacro:cylinder_link name="link1"     length="${arm1_length}" radius="0.04"  color="blue"/>
+  <xacro:cylinder_link name="link2"     length="${arm2_length}" radius="0.035" color="blue"/>
+
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>  <child link="link1"/>
+    <origin xyz="0 0 ${base_length}"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" effort="100" velocity="2"/>
+  </joint>
+
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>  <child link="link2"/>
+    <origin xyz="0 0 ${arm1_length}"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="100" velocity="2"/>
+  </joint>
+
+  <!-- Kameranın gövde çerçevesi: x ileri, z yukarı (REP-103) -->
+  <link name="camera_link"/>
+  <joint name="camera_joint" type="fixed">
+    <parent link="link2"/>  <child link="camera_link"/>
+    <origin xyz="0.045 0 ${arm2_length}"/>
+  </joint>
+
+  <!-- Optik çerçeve: z ileri (bakış yönü), x sağa, y aşağı.
+       Görüntüden hesaplanan noktalar bu çerçevede ifade edilir. -->
+  <link name="camera_optical_frame"/>
+  <joint name="camera_optical_joint" type="fixed">
+    <parent link="camera_link"/>  <child link="camera_optical_frame"/>
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+  </joint>
+</robot>

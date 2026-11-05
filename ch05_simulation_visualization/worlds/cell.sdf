@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<!-- Bölüm 5 - Basit robot hücresi: zemin, ışık, bir iş parçası ve hücreyi
+     izleyen sabit bir kamera. Dünyanın adı (cell), saat konusunun adını
+     belirler: /world/cell/clock (bkz. config/bridge.yaml). -->
+<sdf version="1.9">
+  <world name="cell">
+    <!-- Her adım 1 ms; real_time_factor 1.0 = gerçek zamanla aynı hız -->
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- Gazebo Sim'de her yetenek bir sistem eklentisidir -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Robotun önündeki iş parçası (kütlesi ve eylemsizliği tanımlı) -->
+    <model name="workpiece">
+      <pose>0.75 0 0.05 0 0 0</pose>
+      <link name="link">
+        <inertial>
+          <mass>0.5</mass>
+          <inertia>
+            <ixx>0.00083</ixx><iyy>0.00083</iyy><izz>0.00083</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><box><size>0.1 0.1 0.1</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 0.1 0.1</size></box></geometry>
+          <material>
+            <ambient>0.1 0.6 0.2 1</ambient>
+            <diffuse>0.1 0.6 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Hücreyi izleyen sabit kamera. Kamera kendi +X yönüne bakar:
+         yaw=pi ile robota döner, pitch=0.3 ile hafifçe aşağı eğilir. -->
+    <model name="cell_camera">
+      <static>true</static>
+      <pose>2.0 0 1.2 0 0.3 3.14159</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><box><size>0.05 0.1 0.05</size></box></geometry>
+        </visual>
+        <sensor name="camera" type="camera">
+          <camera>
+            <horizontal_fov>1.047</horizontal_fov>
+            <image><width>640</width><height>480</height></image>
+            <clip><near>0.1</near><far>20</far></clip>
+          </camera>
+          <always_on>1</always_on>
+          <update_rate>15</update_rate>
+          <topic>camera/image_raw</topic>
+          <camera_info_topic>camera/camera_info</camera_info_topic>
+        </sensor>
+      </link>
+    </model>
+  </world>
+</sdf>

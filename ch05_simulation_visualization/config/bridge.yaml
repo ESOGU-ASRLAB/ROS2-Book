@@ -1,0 +1,46 @@
+# Liste 6 - ros_gz_bridge yapılandırması (gz.msgs <-> ROS 2 mesajları).
+#
+# direction:
+#   GZ_TO_ROS     Gazebo -> ROS 2   (komut satırı sözdiziminde '[')
+#   ROS_TO_GZ     ROS 2  -> Gazebo  (komut satırı sözdiziminde ']')
+#
+# Burada tanımlanmayan bir konu ROS 2 tarafında hiç var olmaz ve bunun
+# için uyarı da verilmez (Bölüm 5.8).
+
+# 1. Simülasyon saati. Gazebo /clock adını duyurur ama üzerinden yayın
+#    yapmaz; asıl yayın /world/<dünya_adı>/clock konusundadır. Yanlış
+#    konu köprülenirse use_sim_time:=true olan her düğümün zamanlayıcısı
+#    sessizce hiç tetiklenmez.
+- ros_topic_name: "/clock"
+  gz_topic_name: "/world/cell/clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "gz.msgs.Clock"
+  direction: GZ_TO_ROS
+
+# 2. Hücreyi izleyen sabit kameranın görüntüsü ve kalibrasyon bilgisi
+- ros_topic_name: "/camera/image_raw"
+  gz_topic_name: "/camera/image_raw"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/camera/camera_info"
+  gz_topic_name: "/camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
+
+# Kitaptaki diğer eşleme örnekleri (/scan, /odom, /cmd_vel) gezgin bir
+# robot içindir; bu sabit tabanlı hücrede karşılıkları yoktur. Biçimleri:
+#
+# - ros_topic_name: "/scan"
+#   gz_topic_name: "/scan"
+#   ros_type_name: "sensor_msgs/msg/LaserScan"
+#   gz_type_name: "gz.msgs.LaserScan"
+#   direction: GZ_TO_ROS
+#
+# - ros_topic_name: "/cmd_vel"
+#   gz_topic_name: "/cmd_vel"
+#   ros_type_name: "geometry_msgs/msg/Twist"
+#   gz_type_name: "gz.msgs.Twist"
+#   direction: ROS_TO_GZ

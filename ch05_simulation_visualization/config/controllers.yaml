@@ -1,0 +1,16 @@
+# Bölüm 4, Liste 23'teki denetleyici yapılandırmasının çalışan hâli.
+# Mock kipinde ros2_control_node, Gazebo kipinde gz_ros2_control eklentisi
+# bu dosyayı okur.
+controller_manager:
+  ros__parameters:
+    update_rate: 100        # Hz - denetim döngüsünün frekansı
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+joint_trajectory_controller:
+  ros__parameters:
+    joints: [joint_1, joint_2, joint_3, joint_4, joint_5, joint_6]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]

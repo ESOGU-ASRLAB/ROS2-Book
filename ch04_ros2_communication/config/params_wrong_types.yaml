@@ -1,0 +1,15 @@
+# YAYGIN ÖĞRENCİ HATASI - YAML tip dönüşüm tuzağı (Bölüm 4.3.2).
+# Bu dosya BİLEREK hatalıdır; düğüm başlarken çökmelidir:
+#
+#   $ ros2 run ch04_ros2_communication parameter_demo --ros-args \
+#       --params-file config/params_wrong_types.yaml
+#
+# Beklenen hata (string beklenen parametreye boolean geldi):
+#   InvalidParameterTypeException: Trying to set parameter 'operation_mode'
+#   to 'True' of type 'BOOL', expecting type 'STRING'
+my_node:
+  ros__parameters:
+    robot_name: "turtle1"
+    publish_rate: 20
+    max_speed: 0.3
+    operation_mode: on          # HATA: tırnaksız 'on' boolean True olarak okunur

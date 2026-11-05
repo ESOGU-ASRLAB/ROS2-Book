@@ -1,0 +1,13 @@
+# Liste 14 - Parametre dosyasının yapısı.
+# En üst anahtar düğümün adı, onun altında ros__parameters gelir.
+#
+# Yükleme:
+#   $ ros2 run ch04_ros2_communication parameter_demo --ros-args \
+#       --params-file config/params.yaml
+my_node:
+  ros__parameters:
+    robot_name: "turtle1"
+    publish_rate: 20
+    max_speed: 0.3              # double: her zaman noktalı yazılır (1 değil 1.0)
+    logging_enabled: true
+    operation_mode: "force_on"  # DİKKAT: tırnak içinde string olarak yazılmalıdır!

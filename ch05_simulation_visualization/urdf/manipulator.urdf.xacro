@@ -1,0 +1,160 @@
+<?xml version="1.0"?>
+<!-- Liste 5a - use_fake_hardware'e bağlı koşullu donanım eklentisi.
+
+     Kinematik, Bölüm 4'teki six_axis_arm.urdf.xacro ile aynıdır; Gazebo'nun
+     fizik hesaplayabilmesi için her bağlantıya görsel, çarpışma ve kütle /
+     eylemsizlik (inertial) bilgisi eklenmiştir. Kütlesi olmayan bir bağlantı
+     Gazebo'da kararsızlaşır ya da hiç yüklenmez (Bölüm 5.8).
+
+     use_fake_hardware:=true  -> mock_components/GenericSystem (donanımsız test)
+     use_fake_hardware:=false -> gz_ros2_control/GazeboSimSystem (Gazebo) -->
+<robot name="industrial_manipulator" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Bringup başlatma dosyasından gelen fake/mock kip bayrağı -->
+  <xacro:arg name="use_fake_hardware" default="false"/>
+
+  <material name="grey"><color rgba="0.6 0.6 0.6 1"/></material>
+  <material name="blue"><color rgba="0.2 0.4 0.7 1"/></material>
+  <material name="orange"><color rgba="0.9 0.5 0.1 1"/></material>
+
+  <!-- Silindir bağlantı makrosu: görsel + çarpışma + silindir eylemsizliği.
+       xyz/rpy silindirin bağlantı çerçevesindeki merkezini ve yönünü verir
+       (silindir kendi z ekseni boyunca uzanır). -->
+  <xacro:macro name="cylinder_link" params="name length radius mass xyz rpy color">
+    <link name="${name}">
+      <visual>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <geometry><cylinder length="${length}" radius="${radius}"/></geometry>
+        <material name="${color}"/>
+      </visual>
+      <collision>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <geometry><cylinder length="${length}" radius="${radius}"/></geometry>
+      </collision>
+      <inertial>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <mass value="${mass}"/>
+        <!-- Dolu silindir: Ixx = Iyy = m(3r² + l²)/12, Izz = m r²/2 -->
+        <inertia ixx="${mass*(3*radius*radius + length*length)/12}" ixy="0" ixz="0"
+                 iyy="${mass*(3*radius*radius + length*length)/12}" iyz="0"
+                 izz="${mass*radius*radius/2}"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <!-- Robot dünyaya sabitlenir; Gazebo'da devrilmez -->
+  <link name="world"/>
+  <joint name="world_to_base" type="fixed">
+    <parent link="world"/> <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:cylinder_link name="base_link" length="0.160" radius="0.080" mass="4.0"
+                       xyz="0 0 0.080" rpy="0 0 0" color="grey"/>
+  <xacro:cylinder_link name="link_1" length="0.200" radius="0.060" mass="3.0"
+                       xyz="0 0 0.100" rpy="0 0 0" color="blue"/>
+  <xacro:cylinder_link name="link_2" length="0.420" radius="0.050" mass="2.5"
+                       xyz="0 0 0.210" rpy="0 0 0" color="blue"/>
+  <xacro:cylinder_link name="link_3" length="0.120" radius="0.045" mass="1.5"
+                       xyz="0 0 0.060" rpy="0 0 0" color="grey"/>
+  <!-- link_4..link_6 tabanın +X yönünde uzanır: silindir y ekseni etrafında 90° döndürülür -->
+  <xacro:cylinder_link name="link_4" length="0.300" radius="0.040" mass="1.2"
+                       xyz="0.150 0 0" rpy="0 ${pi/2} 0" color="blue"/>
+  <xacro:cylinder_link name="link_5" length="0.085" radius="0.035" mass="0.8"
+                       xyz="0.0425 0 0" rpy="0 ${pi/2} 0" color="grey"/>
+  <xacro:cylinder_link name="link_6" length="0.040" radius="0.030" mass="0.3"
+                       xyz="0.020 0 0" rpy="0 ${pi/2} 0" color="orange"/>
+
+  <!-- Eklemler: Bölüm 4, Liste 24 ile aynı. Sönüm (damping), Gazebo'da
+       eklemlerin titreşmeden durmasına yardım eder. -->
+  <joint name="joint_1" type="revolute">
+    <parent link="base_link"/> <child link="link_1"/>
+    <origin xyz="0 0 0.160" rpy="0 0 0"/> <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" effort="150" velocity="2.5"/>
+    <dynamics damping="1.0"/>
+  </joint>
+  <joint name="joint_2" type="revolute">
+    <parent link="link_1"/> <child link="link_2"/>
+    <origin xyz="0 0 0.200" rpy="0 0 0"/> <axis xyz="0 1 0"/>
+    <limit lower="${-pi/2}" upper="${pi/2}" effort="150" velocity="2.5"/>
+    <dynamics damping="1.0"/>
+  </joint>
+  <joint name="joint_3" type="revolute">
+    <parent link="link_2"/> <child link="link_3"/>
+    <origin xyz="0 0 0.420" rpy="0 0 0"/> <axis xyz="0 1 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="100" velocity="3.0"/>
+    <dynamics damping="1.0"/>
+  </joint>
+  <joint name="joint_4" type="revolute">
+    <parent link="link_3"/> <child link="link_4"/>
+    <origin xyz="0.090 0 0.120" rpy="0 0 0"/> <axis xyz="1 0 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="50" velocity="3.5"/>
+    <dynamics damping="0.5"/>
+  </joint>
+  <joint name="joint_5" type="revolute">
+    <parent link="link_4"/> <child link="link_5"/>
+    <origin xyz="0.300 0 0" rpy="0 0 0"/> <axis xyz="0 1 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="50" velocity="3.5"/>
+    <dynamics damping="0.5"/>
+  </joint>
+  <joint name="joint_6" type="revolute">
+    <parent link="link_5"/> <child link="link_6"/>
+    <origin xyz="0.085 0 0" rpy="0 0 0"/> <axis xyz="1 0 0"/>
+    <limit lower="${-2*pi}" upper="${2*pi}" effort="30" velocity="4.0"/>
+    <dynamics damping="0.5"/>
+  </joint>
+
+  <!-- Bilek flanşı (tool0): Bölüm 4 ile aynı -->
+  <link name="tool0"/>
+  <joint name="link_6_to_tool0" type="fixed">
+    <parent link="link_6"/> <child link="tool0"/>
+    <origin xyz="0.040 0 0" rpy="0 ${pi/2} 0"/>
+  </joint>
+
+  <!-- Eklem arayüzü makrosu: konum komutu, konum + hız durumu -->
+  <xacro:macro name="position_joint" params="name lower upper">
+    <joint name="${name}">
+      <command_interface name="position">
+        <param name="min">${lower}</param>
+        <param name="max">${upper}</param>
+      </command_interface>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+  <ros2_control name="ManipulatorSystem" type="system">
+    <hardware>
+      <xacro:if value="$(arg use_fake_hardware)">
+        <!-- Kip 2: Saf Yazılım / Mock Sürücü (Donanım gerektirmez).
+             Komut edilen konumu doğrudan durum olarak geri yansıtır. -->
+        <plugin>mock_components/GenericSystem</plugin>
+        <param name="calculate_dynamics">true</param>
+      </xacro:if>
+      <xacro:unless value="$(arg use_fake_hardware)">
+        <!-- Kip 1: Gazebo Simülasyon Sürücüsü -->
+        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      </xacro:unless>
+    </hardware>
+    <xacro:position_joint name="joint_1" lower="${-pi}"   upper="${pi}"/>
+    <xacro:position_joint name="joint_2" lower="${-pi/2}" upper="${pi/2}"/>
+    <xacro:position_joint name="joint_3" lower="${-pi}"   upper="${pi}"/>
+    <xacro:position_joint name="joint_4" lower="${-pi}"   upper="${pi}"/>
+    <xacro:position_joint name="joint_5" lower="${-pi}"   upper="${pi}"/>
+    <xacro:position_joint name="joint_6" lower="${-2*pi}" upper="${2*pi}"/>
+  </ros2_control>
+
+  <!-- Gazebo kipinde denetleyici yöneticisini Gazebo'nun içinde çalıştıran
+       eklenti. Mock kipinde ros2_control_node bu işi üstlenir. -->
+  <xacro:unless value="$(arg use_fake_hardware)">
+    <gazebo>
+      <plugin filename="gz_ros2_control-system"
+              name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <parameters>$(find ch05_simulation_visualization)/config/controllers.yaml</parameters>
+      </plugin>
+    </gazebo>
+  </xacro:unless>
+
+</robot>

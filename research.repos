@@ -1,0 +1,8 @@
+# Bölüm 7-10 uygulamalarının araştırma deposu.
+# Kullanım (çalışma alanının kökünden):
+#   $ vcs import src < src/ROS2-Book/research.repos
+repositories:
+  ESOGU-HILTest-DualRobot:
+    type: git
+    url: https://github.com/ESOGU-ASRLAB/ESOGU-HILTest-DualRobot.git
+    version: master
