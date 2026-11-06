@@ -24,6 +24,9 @@ setup(
             glob('config/*.yaml')),
         (os.path.join('share', package_name, 'rviz'),
             glob('rviz/*.rviz')),
+        # Liste 2 ve 7'deki hazır arayüzlerin başvuru kopyaları
+        (os.path.join('share', package_name, 'interfaces'),
+            glob('interfaces/*.srv') + glob('interfaces/*.action')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

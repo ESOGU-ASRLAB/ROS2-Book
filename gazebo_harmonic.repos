@@ -1,0 +1,12 @@
+# Bölüm 5'in Gazebo kipi için ROS 2 Humble + Gazebo Harmonic köprü paketleri.
+# Humble'ın ikili ros_gz ve gz_ros2_control paketleri Gazebo Fortress'a bağlıdır;
+# bu iki depo GZ_VERSION=harmonic ile kaynaktan derlenir (ana README'ye bakınız).
+repositories:
+  ros_gz:
+    type: git
+    url: https://github.com/gazebosim/ros_gz.git
+    version: humble
+  gz_ros2_control:
+    type: git
+    url: https://github.com/ros-controls/gz_ros2_control.git
+    version: humble

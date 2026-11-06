@@ -4,7 +4,7 @@
      Kinematik, Bölüm 4'teki six_axis_arm.urdf.xacro ile aynıdır; Gazebo'nun
      fizik hesaplayabilmesi için her bağlantıya görsel, çarpışma ve kütle /
      eylemsizlik (inertial) bilgisi eklenmiştir. Kütlesi olmayan bir bağlantı
-     Gazebo'da kararsızlaşır ya da hiç yüklenmez (Bölüm 5.8).
+     Gazebo'da kararsızlaşır ya da hiç yüklenmez (Bölüm 5.9).
 
      use_fake_hardware:=true  -> mock_components/GenericSystem (donanımsız test)
      use_fake_hardware:=false -> gz_ros2_control/GazeboSimSystem (Gazebo) -->

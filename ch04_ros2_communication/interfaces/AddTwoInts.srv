@@ -1,0 +1,7 @@
+# Liste 2 - example_interfaces/srv/AddTwoInts
+# Hazır arayüzdür; bu paket onu example_interfaces paketinden kullanır.
+# Kurulu tanımı görmek için: ros2 interface show example_interfaces/srv/AddTwoInts
+int64 a          # istek
+int64 b          # istek
+---
+int64 sum        # yanıt

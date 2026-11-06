@@ -12,18 +12,24 @@ Her iki kipte de aynı denetleyiciler (`joint_state_broadcaster`,
 `joint_trajectory_controller`) ve aynı yörünge düğümü kullanılır. Üst katmanın
 donanım değişiminden etkilenmemesi, ros2_control soyutlamasının amacıdır.
 
-> Gazebo kipi için ana [README](../README.md)'deki **Humble + Gazebo Harmonic notu**na bakınız.
+> Gazebo kipi Gazebo Harmonic gerektirir; kurulum adımları ana [README](../README.md)'deki
+> **Bölüm 5: Gazebo Harmonic kurulumu** başlığındadır.
 
 ## Kitaptaki listelerin depodaki karşılıkları
 
-| Liste | Kitaptaki ad | Depodaki dosya | Not |
-|---|---|---|---|
-| 5a | `manipulator.urdf.xacro` | [`urdf/manipulator.urdf.xacro`](urdf/manipulator.urdf.xacro) | Tek eklemli parça 6 ekleme tamamlandı; Gazebo için kütle, eylemsizlik ve `gz_ros2_control` eklentisi eklendi |
-| 5b | `cell_bringup.launch.py` | [`launch/cell_bringup.launch.py`](launch/cell_bringup.launch.py) | `my_robot_description` → `ch05_simulation_visualization`; denetleyiciler, Gazebo, köprü ve RViz2 eklendi |
-| 6 | köprü örneği, `bridge.yaml` | [`config/bridge.yaml`](config/bridge.yaml) | `/clock`, kamera görüntüsü ve kamera bilgisi köprülenir |
-| — | — | [`config/controllers.yaml`](config/controllers.yaml) | Bölüm 4, Liste 23'ün çalışan hâli |
-| — | — | [`worlds/cell.sdf`](worlds/cell.sdf) | Zemin, ışık, iş parçası ve sabit kamera |
-| — | — | [`ch05_simulation_visualization/send_trajectory.py`](ch05_simulation_visualization/send_trajectory.py) | Kolu üç ara noktadan geçiren yörünge istemcisi |
+Kitaptaki listeler depodaki dosyaların aynısıdır; birden çok listeye bölünen ya da
+kitapta bir kısmı gösterilen dosyalarda (manipulator.urdf.xacro, cell_bringup.launch.py) her liste dosyadan
+kesintisiz bir parçadır.
+
+| Liste | Depodaki dosya | Açıklama |
+|---|---|---|
+| 5a | [`urdf/manipulator.urdf.xacro`](urdf/manipulator.urdf.xacro) | 6 eklemli kol; kütle/eylemsizlik değerleri ve `use_fake_hardware` ile seçilen donanım eklentisi |
+| 5b | [`launch/cell_bringup.launch.py`](launch/cell_bringup.launch.py) | Kip seçimi; denetleyicilerin, Gazebo'nun, köprünün ve RViz2'nin başlatılması |
+| 6 | [`config/bridge.yaml`](config/bridge.yaml) | Simülasyon saati (`/world/cell/clock` → `/clock`), kamera görüntüsü ve kamera bilgisi köprüsü |
+| — | [`config/controllers.yaml`](config/controllers.yaml) | Denetleyici yapılandırması (Bölüm 4, Liste 23'ün çalışan hâli) |
+| — | [`worlds/cell.sdf`](worlds/cell.sdf) | Zemin, ışık, iş parçası ve sabit kamera |
+| — | [`ch05_simulation_visualization/send_trajectory.py`](ch05_simulation_visualization/send_trajectory.py) | Kolu üç ara noktadan geçiren yörünge istemcisi |
+| — | [`rviz/cell.rviz`](rviz/cell.rviz) | Robot modeli, TF ağacı ve kamera görüntüsü için RViz2 ayarları |
 
 ## Çalıştırma
 

@@ -5,7 +5,7 @@
 #   ROS_TO_GZ     ROS 2  -> Gazebo  (komut satırı sözdiziminde ']')
 #
 # Burada tanımlanmayan bir konu ROS 2 tarafında hiç var olmaz ve bunun
-# için uyarı da verilmez (Bölüm 5.8).
+# için uyarı da verilmez (Bölüm 5.9).
 
 # 1. Simülasyon saati. Gazebo /clock adını duyurur ama üzerinden yayın
 #    yapmaz; asıl yayın /world/<dünya_adı>/clock konusundadır. Yanlış

@@ -1,0 +1,8 @@
+# Liste 7 - turtlesim/action/RotateAbsolute
+# Hazır arayüzdür; bu paket onu turtlesim paketinden kullanır.
+# Kurulu tanımı görmek için: ros2 interface show turtlesim/action/RotateAbsolute
+float32 theta        # hedef: gidilecek mutlak açı [rad]
+---
+float32 delta        # sonuç: toplamda dönülen açı
+---
+float32 remaining    # geri besleme: kalan açı

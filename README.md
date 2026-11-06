@@ -24,7 +24,8 @@ her adımın araştırma deposundaki karşılığını gösterir.
 
 - Ubuntu 22.04
 - ROS 2 Humble
-- Gazebo Harmonic (yalnızca Bölüm 5'in Gazebo kipi için; aşağıdaki nota bakınız)
+- Gazebo Harmonic (yalnızca Bölüm 5'in Gazebo kipi için; kurulumu aşağıdaki
+  **Bölüm 5: Gazebo Harmonic kurulumu** başlığındadır)
 
 ## Kurulum
 
@@ -64,20 +65,65 @@ $ colcon build --symlink-install
 
 `vcs` komutu yoksa: `$ sudo apt install python3-vcstool`
 
-## Humble + Gazebo Harmonic notu
+## Bölüm 5: Gazebo Harmonic kurulumu
 
-ROS 2 Humble'ın varsayılan Gazebo eşi Gazebo Fortress'tır. `rosdep`'in kurduğu
+ROS 2 Humble'ın varsayılan Gazebo eşi Gazebo Fortress'tır; `rosdep`'in kurduğu
 `ros-humble-ros-gz-*` ve `ros-humble-gz-ros2-control` ikili paketleri Fortress'a
-bağlıdır. Bölüm 5'in Gazebo kipi bu kitapta Harmonic ile sınanmıştır. Harmonic
-kullanmak için `ros_gz` ve `gz_ros2_control` paketlerinin Harmonic'e karşı derlenmiş
-hâlleri gerekir:
+bağlıdır. Bölüm 5'in Gazebo kipi Gazebo Harmonic ile çalışır. Bunun için Harmonic
+kurulur ve iki köprü deposu ([`gazebo_harmonic.repos`](gazebo_harmonic.repos):
+`ros_gz` ve `gz_ros2_control`, `humble` dalları) çalışma alanında Harmonic'e karşı
+derlenir. Aşağıdaki adımlar yukarıdaki **Kurulum** adımlarından sonra bir kez
+yapılır.
 
-- `ros_gz` ve `gz_ros2_control` paketlerini `humble` dallarından, `GZ_VERSION=harmonic`
-  ortam değişkeniyle çalışma alanında kaynaktan derleyin, ya da
-- Gazebo'nun resmî ROS kurulum rehberindeki Humble + Harmonic yönergelerini izleyin:
-  <https://gazebosim.org/docs/harmonic/ros_installation>
+> Bölüm 4 ve Bölüm 5'in mock (donanımsız) kipi Gazebo gerektirmez; yalnızca bunlarla
+> çalışacaksanız bu bölümü atlayabilirsiniz.
 
-Bölüm 4 ve Bölüm 5'in mock (donanımsız) kipi Gazebo gerektirmez.
+**1. Gazebo Harmonic'i kurun** (OSRF paket deposu):
+
+```bash
+$ sudo apt install curl lsb-release gnupg
+$ sudo curl https://packages.osrfoundation.org/gazebo.gpg \
+    --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] \
+http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | \
+    sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+$ sudo apt update
+$ sudo apt install gz-harmonic
+```
+
+**2. Köprü paketlerini çalışma alanına ekleyip Harmonic'e karşı derleyin:**
+
+```bash
+$ cd ~/ros2_ws
+$ vcs import src < src/ROS2-Book/gazebo_harmonic.repos
+
+# GZ_VERSION, derlemenin hangi Gazebo sürümüne bağlanacağını belirler.
+# Kalıcı olması için ~/.bashrc dosyasına eklenir.
+$ echo "export GZ_VERSION=harmonic" >> ~/.bashrc
+$ export GZ_VERSION=harmonic
+
+$ source /opt/ros/humble/setup.bash
+# gz-* kütüphaneleri 1. adımda gz-harmonic ile kuruldu; rosdep bu anahtarları
+# tanımadığı için atlanır.
+$ rosdep install --from-paths src --ignore-src -r -y \
+    --skip-keys "gz-math7 gz-msgs10 gz-plugin2 gz-sim8 gz-transport13"
+$ colcon build --symlink-install --packages-up-to ch05_simulation_visualization
+$ source install/setup.bash
+```
+
+`--packages-up-to`, yalnızca Bölüm 5 paketinin ihtiyaç duyduğu paketleri
+(`ros_gz_sim`, `ros_gz_bridge`, `ros_gz_interfaces`, `gz_ros2_control`) derler.
+
+**3. Denetleyin:**
+
+```bash
+$ ros2 launch ch05_simulation_visualization cell_bringup.launch.py
+# 2. terminal: denetleyiciler 'active' görünmelidir
+$ ros2 control list_controllers
+```
+
+Çalışma alanındaki `ros_gz` ve `gz_ros2_control`, `/opt/ros/humble` altındaki
+Fortress paketlerinin önüne geçer; Fortress paketlerinin kaldırılması gerekmez.
 
 ## Kod standartları
 

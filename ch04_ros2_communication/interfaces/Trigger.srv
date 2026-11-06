@@ -1,0 +1,7 @@
+# Liste 2 - std_srvs/srv/Trigger
+# Hazır arayüzdür; bu paket onu std_srvs paketinden kullanır.
+# Kurulu tanımı görmek için: ros2 interface show std_srvs/srv/Trigger
+                 # istek bölümü boştur
+---
+bool success     # yanıt: iş başarılı mıydı
+string message   # yanıt: açıklama metni
