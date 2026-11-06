@@ -1,0 +1,185 @@
+# Çok robotlu bakış noktası planlayıcısının parametreleri.
+#
+# Kamera bloğu ve kaplama ayarları tek kollu planlayıcıyla aynıdır; böylece tek
+# kol-çok kol karşılaştırması AYNI algılayıcı modelini ve aday yoğunluğunu kullanır,
+# yalnızca iki kol arasındaki tahsis farklıdır.
+multirobot_planner_node:
+  ros__parameters:
+    camera:
+      horizontal_fov_deg: 70.0
+      vertical_fov_deg: 60.0
+      fov_safety_margin_deg: 3.0
+      min_range_m: 0.2
+      max_range_m: 1.8
+      frame_rate_hz: 5.0
+      viewpoint_distances: [0.3, 0.6, 1.0, 1.4]
+      tilt_variations_deg: [-15.0, 0.0, 15.0]
+      # Hâlâ kaplanmış sayılan en dik yüzey-görüş açısı. Şase ağında ölçüldü (4277
+      # hedef, 5136 aday): geometrik kaplama tavanı 80 derecede %90.5, 85'te %91.7,
+      # 88'de %94.6'dır. Maliyeti yoktur: aday kümesi değişmez, yalnızca adaylara
+      # hangi hedeflerin yazıldığı değişir. 85 dürüst durma noktasıdır: bir ToF
+      # algılayıcısı sıyırma açısında çok az veri döndürür; 88/89 derecedeki fazladan
+      # 3 puan, kameranın gerçekte ölçmediği bir kaplama olarak sayılırdı.
+      max_incidence_angle_deg: 85.0
+
+    coverage_threshold: 0.98
+
+    # Aday yoğunluğu (tek kollu temel çözümle aynı).
+    num_base_points: 400
+    target_sample_points: 5000
+
+    # --- Ara nokta sayısı denetimi (planda her biri yalnızca 1-2 nokta ekleyen
+    #     100'den fazla kuyruk bakış noktası vardı; bu iki ayar o kuyruğu keser). ---
+    # Kalan en iyi bakış noktası bu sayıdan AZ YENİ hedef noktası ekleyecekse bakış
+    # noktası eklemeyi durdur. Bu, azalan getirili uzun kuyruğu keser: çok daha az ara
+    # nokta için artırın (küçük kaplama kaybı), işe yarayan her bakış noktasını tutmak
+    # için düşürün (1). Gözlenen eğriye göre ~8, bilgilendirici dirseği korur.
+    min_new_points: 8
+
+    # Oransal kuyruk kesici (tek kollu planlayıcının "%0.5'te kes" ayarının aynası).
+    # Kalan en iyi bakış noktası yeni kaplama olarak bütün hedef noktalarının bu
+    # ORANINDAN azını ekleyecekse dur (0.0035 = %0.35; 4277 hedefte ~15 yeni nokta).
+    # Etkin eşik max(min_new_points, min_marginal_coverage * hedefler)'dir; yani bu
+    # değer hâlâ min_new_points=8'in önüne geçer. 0.0 kapatır.
+    #
+    # Eskiden 0.005'ti (bu ağda 22 yeni nokta); bu, şase planını 28 bakış noktası ve
+    # %75.0 geometrik kaplamada durduruyordu. 2026-09-08'de bu ağın açgözlü eğrisinde,
+    # max_incidence 85 derecede ölçüldü: eşik 22 -> 29 bakış noktası / %76.4, eşik 15
+    # -> 37 / %79.5, eşik 9 -> 51 / %83.0. Ulaşılan değer bunların hepsinden düşüktür,
+    # çünkü kuyruğun çoğu erişilemez; ama sıralama geçerlidir. Bu değer ortadadır:
+    # %0.5 kesicinin attığı kaplamanın çoğunu, durak sayısını iki katına çıkarmadan
+    # geri kazanır. Fazladan durakların planlama maliyeti yalnızca bir kezdir: iki kol
+    # paralel çalışır ve her yörünge ilk kayıt koşusundan sonra önbelleğe alınır.
+    min_marginal_coverage: 0.0035
+
+    # Güvenlik koruması olarak KOL başına kesin üst sınır. 0 = sınır yok (karar
+    # min_new_points'in). İki kol paralel çalıştığı için toplam süre ~max(kol başına
+    # sayılar)'dır. Ortak yedek değerdir; yalnızca aşağıda kendi değeri olmayan kol kullanır.
+    max_viewpoints_per_robot: 30
+
+    # KOL başına geçersiz kılmalar (0 = geçersiz kılma yok, yukarıdaki ortak sınır).
+    # Kollar birbirinin yerine geçemez: Kawasaki 0.015 hız ölçeğinde (~4.5 derece/sn)
+    # çalışır, dolayısıyla onun durak sayısı koşunun toplam süresini belirler; UR ise
+    # çok daha hızlıdır. Planı ~28'den ~51 bakış noktasına uzatan
+    # min_marginal_coverage=0.002 ile birlikte artırıldı: bunlar olmadan 30'luk ortak
+    # sınır tahsisi erken durdurur ("Every arm reached its per-robot budget") ve
+    # gevşetilmiş kuyruk kesicinin kazandırdığı kaplamayı atardı.
+    max_viewpoints_ur: 45
+    max_viewpoints_kawasaki: 13
+
+    # İki kolun da ulaşabildiği bir aday daha az yüklü kola gider (paralel koşuyu
+    # dengeler). Sabit bir kol öncelik sırası için false yapın.
+    balance_load: true
+
+    # Her kolun seçilmiş bakış noktalarını kısa bir Kartezyen ziyaret yoluna (en yakın
+    # komşu + 2-opt) yeniden sırala; böylece kol, açgözlü kaplama keşfi sırasıyla
+    # şasenin bir ucundan diğerine atlamak yerine komşu durakları tarar. Yalnızca
+    # ziyaret SIRASI değişir, aynı bakış noktaları tutulur. false = açgözlü sıra.
+    order_by_proximity: true
+    # Ziyaret taraması için kol başına BAŞLANGIÇ çapası; böylece iki kol aynı bölgede
+    # buluşmak yerine şaseye ZIT uçlardan (biri önden, biri arkadan) yaklaşır.
+    # 'max_y' = en büyük Y (ön), 'min_y' = en küçük Y (arka), 'coverage' = en yüksek
+    # kaplamalı bakış noktasından başla.
+    ur_order_anchor: "max_y"
+    kawasaki_order_anchor: "min_y"
+    # Çapa seçildikten sonra turun NASIL kurulacağı.
+    #   'y_bands'   -> tek yönlü tarama: ilk Y bandındaki her bakış noktası, sonra
+    #                  sonraki bant, vb.; kol bıraktığı bir banda asla dönmez. Bant
+    #                  içindeki duraklar yine en kısa yolu izler.
+    #   'proximity' -> özgün davranış: genel olarak en kısa 3B yol. Daha ucuzsa şasenin
+    #                  başına geri yürümekte serbesttir ve bunu yapar: 2026-09-08
+    #                  planında UR turu y=-0.49'a kadar indi, sonra y=+1.25'e kadar geri
+    #                  tırmandı; 20 hamlesinin 9'u tarama yönüne karşıydı (2.28 m geri
+    #                  Y yolu, en kötü tek adım 0.76 m).
+    order_mode: "y_bands"
+    # Bir Y bandının derinliği [m]. Aynı iki planda ölçüldü: 0.30'da en kötü geri adım
+    # 0.22 m'ye, toplam geri yol 0.54 m'ye düşer; karşılığında yol 'proximity'den ~%13
+    # uzar. Daha küçük bantlar katı bir Y sıralamasına yaklaşır (tam tek yönlü, ~%35
+    # daha uzun yol); daha büyük bantlar 'proximity'ye geri kayar. Bir kamera
+    # konumunun kapladığı Y derinliği kadar verin.
+    order_band_width_m: 0.30
+
+    # Ziyaret sırası kesinleşince her bakış noktasının saklı IK açılarını, eklemin URDF
+    # sınırları izin verdikçe ÖNCEKİ bakış noktasına en yakın 2*pi eşdeğerleriyle yeniden
+    # ifade et. IK her bakış noktası için rastgele bir dal döndürür; yoksa tur +100
+    # derece ardından -260 derece gibi çiftler saklar: aynı fiziksel açı, sürülecek
+    # fazladan bir tam tur. Pozlar aynıdır; kaplama/erişilebilirlik değişemez.
+    # Aralığı 2*pi ya da daha dar olan eklemlere (Kawasaki joint1/2/3/5, UR dirseği) dokunulmaz.
+    unwind_joint_goals: true
+    wrap_limit_margin: 0.05   # her eklem sınırından uzak tutulan radyan
+    wrap_min_gain: 0.35       # radyan (~20 derece): daha az kazandıran yeniden yazmaları yok say
+
+    # Dalların yeniden zincirlenmesi. Sarma yalnızca tam turları kaldırır; gerçekten
+    # farklı bir kol duruşundan (omuz/dirsek/bilek dönüşü ya da farklı bir AGV konumu)
+    # ulaşılan bir bakış noktası ayrı bir sorundur ve 2026-08-03 planında Kawasaki'nin
+    # baskın maliyetiydi: UR'nin 225 derecesine karşı hamle başına 346 derece; joint1
+    # tam olarak +/-180 aralığında olduğu için sarmanın asla dokunamayacağı 248
+    # derecelik bir joint1 salınımı.
+    rechain_ik: true
+    rechain_ik_attempts: 4
+    # Tohumlu bir sorguyu tekrarlamak yalnızca çözücü rastgele yeniden başlıyorsa yeni
+    # dallar örnekler; pick_ik/global (UR) bunu yapar, KDL (Kawasaki) yapmaz. Bu yüzden TOHUM değiştirilir.
+    rechain_rail_probe: 0.25   # m, +/- ray tohum ofseti (fazladan eksen denemesi); 0 kapatır
+    rechain_rail_weight: 2.0   # metre başına radyan: bir metre AGV yolunun "değeri"
+    rechain_yaw_probe: true    # joint1'i +/- pi çevirerek de tohumla
+    rechain_yaw_joint: "joint1"
+    rechain_rail_joint: "world_to_agv"
+
+    # IK, kolun sahneyle/şaseyle çarpıştığı pozları reddeder.
+    ik_avoid_collisions: true
+
+    # --- Erişilebilirliğin doğrulandığı sahne --------------------------------
+    # Yukarıdaki ik_avoid_collisions'ı move_group, o an tuttuğu sahneye göre yanıtlar.
+    # YÜRÜTÜCÜLER planlamadan önce bir zemin kutusu ekler ve hareketli bağlantılarına
+    # dolgu uygular; bunu burada yeniden kurmadan üretici çıplak bir sahneyi, yürütücü
+    # ise dolgulu bir sahneyi denetler: 2026-09-07/08 şase planlarında ölçüldü, her
+    # koşuda bir UR bakış noktasının (z = 0.278 ve 0.256 m) yürütme anında çarpışmasız
+    # IK dalı yoktu, yine de kaplaması plan toplamında sayılmıştı.
+    # BUNLARI KOŞUNUN KULLANACAĞI BAŞLATMA ARGÜMANLARIYLA AYNI TUTUN; değerler
+    # multirobot_inspection.launch.py'nin varsayılanlarının aynasıdır.
+    ik_scene_setup: true
+    ground_plane_z: -0.02        # zemin kutusunun ÜST yüzünün world çerçevesindeki yüksekliği
+    ground_plane_size: 6.0
+    ground_plane_thickness: 0.2
+    collision_padding: 0.04      # kolların her engelden koruduğu güvenlik payı
+    # Yürütücülerin dolgu uyguladığı bağlantılar: UR düğümü her 'ur10e_*' bağlantısına,
+    # Kawasaki düğümü link1..link6'ya. İş birlikli koşu ikisini de tek ortak sahneye uygular.
+    ik_padding_link_patterns: ["^ur10e_", "^link[1-6]$"]
+
+    # --- UR10e: kamera ur10e_depth_optical_frame üzerinde ---
+    ur_group_name: "real_ur10e"
+    ur_base_frame: "world"
+    ur_tool_frame: "ur10e_depth_optical_frame"
+
+    # YALNIZCA UR için ÇALIŞMA ALANI YASAK KUTUSU (world çerçevesi, metre). Yalnızca ağı
+    # kullanan örtülme denetimi, UR'nin doğrusal rayının ARKASINDAKİ bir kamera pozunun
+    # engellendiğini göremez; UR oraya gider ve 0 nokta toplardı. Bu ayar UR'nin
+    # [min,max] dışındaki her adayı erişilemez saymasını sağlar -> tahsis edici onu
+    # Kawasaki'ye verir (bu kutuyla asla engellenmez, Kawasaki'nin kaplaması korunur)
+    # ya da atar. Ray world X=-0.158'dedir (hücre orijinde, Y boyunca ilerler); -0.20
+    # ~4 cm pay bırakır. Tek kollu planlayıcının kullandığı kutuyla aynıdır, burada kol başına uygulanır.
+    # X üst sınırı = -0.20 (rayın arkasındaki pozları reddeder; ray world X=-0.158'de).
+    # Z alt sınırı =  0.20 artık yalnızca ucuz bir ÖN süzgeçtir: KAMERAYI sınırlar, bu
+    #                 da bileğin nereye düştüğü hakkında hiçbir şey söylemez; zemine
+    #                 asıl çarpan bilektir. Gerçek zemin testi, yukarıdaki ik_scene_setup
+    #                 ile kurulan zemin düzlemine karşı yapılan çarpışma denetimidir.
+    ur_workspace_filter_enabled: true
+    ur_workspace_bounds_min: [-100.0, -100.0, 0.20]
+    ur_workspace_bounds_max: [-0.20, 100.0, 100.0]
+
+    # --- Kawasaki: bakış noktası kameranın bulunması gereken yerdir, ama IK sabit
+    #     kamera->uç dönüşümü uygulanarak grup UCU (link6) için çözülür; böylece kamera
+    #     şaseye doğru bakar (bkz. düğüm açıklaması). ---
+    kawasaki_group_name: "real_kawasaki"
+    kawasaki_base_frame: "world"
+    kawasaki_camera_frame: "camera_rgb_optic_frame"
+    kawasaki_group_tip: "link6"
+    kawasaki_ik_via_tip: true
+
+    # YÖNELİM düzeltmesi. Üretici kamerayı +Z boyunca yöneltir (gerçek
+    # depth_optical_frame'inin görüş ekseni +Z olan UR için doğru). Kawasaki'nin
+    # camera_rgb_optic_frame'i ise +X boyunca bakar (kaydedilmiş bulutlardan
+    # doğrulandı). Bu dönüş hedefi yeniden yönlendirir; böylece Kawasaki kamerası
+    # gerçekten şaseye bakar: R_cam = R_view @ R(rpy). Varsayılan rpy(-pi/2,-pi/2,0)
+    # +Z'yi +X'e eşler. Dik bakıyor ama yuvarlanmış/ters ise üçüncü (yalpa) değeri ayarlayın.
+    kawasaki_view_axis_correction_rpy: [-1.5707963, -1.5707963, 0.0]

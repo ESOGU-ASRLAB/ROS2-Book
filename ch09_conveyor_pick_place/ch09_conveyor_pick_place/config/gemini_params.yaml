@@ -1,0 +1,639 @@
+/**:
+  ros__parameters:
+    use_sim_time: true
+
+    # --- ER backend ---
+    # gemini : Gemini API. GEMINI_API_KEY ortam değişkeninden okunur; buraya
+    #          anahtar YAZMAYIN (yaml repoya girer).
+    #              export GEMINI_API_KEY="AIza..."
+    # vertex : Vertex AI (vertex_project doldurulmalı)
+    backend: "gemini"
+    model: "gemini-robotics-er-2-preview"
+    thinking_level: "high"
+    jpeg_quality: 90
+    vertex_project: ""
+    vertex_location: "us-central1"
+
+    # --- ER'ye verilen görüntü ---
+    # render : DERİNLİKTEN üretilir. Gerçek SICK Visionary-T Mini'nin RGB modu
+    #          olmadığı için sim ve gerçek arasında taşınabilen tek seçenek.
+    # rgb    : Gazebo'nun RGB kamerası. Yalnız sim'de vardır, gerçeğe TAŞINMAZ.
+    er_image_source: "render"
+    # relief | normals | turbo | gray | intensity  (intensity yalnız gerçek donanımda)
+    #
+    # relief: baskın düz yüzeyi (bant/masa) bulup ONA GÖRE YÜKSEKLİĞİ boyar.
+    # normals ile ölçülen sorun: bandın üstündeki 29 mm'lik kutunun üst yüzü
+    # bantla aynı normale sahip, dolayısıyla aynı tonda çıkıyordu - kontrast
+    # 1.7/255. Kutu görüntüde yalnızca ince bir kenar çizgisiydi ve ER onu
+    # bulamadı. Sabit 0.3-4.0 m pencereli turbo/gray de 29 mm'yi 2-3/255'e
+    # sıkıştırıyor. relief'te aynı karede kontrast 89.8/255.
+    #
+    # Pencere kameranın uzaklığına değil YÜZEYE göre tanımlı olduğu için kol
+    # yaklaşıp uzaklaşınca bozulmaz ve gerçek SICK'te birebir aynı hesaplanır.
+    render_mode: "relief"
+    # relief'te bu ikisi yalnız geçerlilik maskesidir (bu aralık dışı = veri yok),
+    # renk skalasını belirlemezler. Diğer modlarda sabit metrik aralıktır: sim ve
+    # gerçek görüntüler aynı görünsün diye kareye göre değil sahneye göre seçilir.
+    render_min_m: 0.3
+    render_max_m: 4.0
+    # ER 2'nin gerçekte gördüğü kareyi /gemini/er_image olarak yayınlar.
+    # "Model neden orayı gösterdi" sorusunun tek cevabı bu görüntü.
+    publish_er_image: true
+    # Önizleme yayın hızı (Hz). Sorgudan BAĞIMSIZ olarak yayınlar; 0 = kapalı.
+    # Sorgu göndermeden önce kadrajın doğru olduğunu RViz'de görebilmek için.
+    er_image_rate_hz: 2.0
+
+    # --- kamera topic'leri VE DERİNLİĞİN BİRİMİ/KONVANSİYONU ---
+    # BURADA DEĞİL. Sim ile gerçek arasındaki TEK fark kamera (ve saat) olduğu
+    # için bunlar mode overlay'lerine taşındı. depth_scale_m ve depth_is_radial
+    # de oraya ait: ikisi de kameranın ÖZELLİĞİ, ayar değil. Gazebo
+    # 32FC1/metre/planar, SICK Visionary-T Mini 16UC1/0.25mm/RADYAL yayınlıyor.
+    #     config/mode_sim.yaml
+    #     config/mode_real.yaml
+    # launch, mode:=sim | mode:=real ile hangisinin bineceğini seçer.
+
+    world_frame: "world"
+    # Boş bırakılırsa mesajın kendi header.frame_id'si kullanılır.
+    camera_frame_override: ""
+
+    # cloud | depth | auto (önce bulut, olmazsa depth+CameraInfo)
+    #
+    # "cloud" olmalı, "auto" DEĞİL. Ölçüldü (10 Ağu 2026, canlı hücre):
+    # Gazebo bulutu x-ileri konvansiyonunda geliyor (x = mesafe, 0.5-2.1 m,
+    # %100 pozitif) ve URDF'teki depth_optical_joint'in rpy(-pi/2,-pi/2,0)
+    # açısıyla birlikte world'e DOĞRU düşüyor (world Z: 0.00-1.61 m, zeminin
+    # altında %0 nokta).
+    # Depth yolu ise pinhole ile OPTİK konvansiyonda (z = mesafe) nokta üretir;
+    # aynı frame'e damgalandığında 90 derece dönük olur ve nokta hücrenin
+    # dışına düşer. "auto" iken bulut bir an gelmezse sessizce bu yanlış yola
+    # kayar - o yüzden kapalı.
+    deprojection: "cloud"
+    sample_window: 5
+    max_items: 10
+    marker_lifetime_sec: 0.0
+
+    # --- yüzey düzlemi / vakum uygunluğu ---
+    # ER 2'nin gösterdiği pikselin çevresine düzlem oturtulur; normal buradan
+    # gelir. Emme kabı yüzeye dik oturmazsa sızdırır, bu yüzden bu blok
+    # vakumlu kavramada opsiyonel değildir.
+    patch_radius_px: 12
+    patch_depth_band: 0.05      # yamaya arka planın karışmasını engeller
+    patch_min_points: 25
+    max_surface_rms: 0.004      # 4 mm'den bozuk yüzey = kenar/köşe, reddedilir
+    min_surface_inliers: 40
+    max_surface_tilt_deg: 180.0 # 180 = eğim denetimi kapalı (dikey yüzeyler serbest)
+    require_surface: true       # yüzey çıkarılamazsa kavramayı hiç deneme
+
+    # --- hareket ---
+    # real : /move_action (gerçek MoveIt, grup real_ur10e, önek ur10e_).
+    #        real_to_sim_bridge zaten Gazebo'yu aynaladığı için sim'de de
+    #        hareket görülür ve gerçek robota geçerken HİÇBİR ŞEY değişmez.
+    #        digital_twin:=true GEREKMEZ.
+    # Kitap deposunda yalnızca "real" vardır; araştırma deposundaki "sim" arka ucu
+    # (/sim/move_action) alınmadı.
+    moveit_backend: "real"
+    planning_frame: "world"
+    # Boş = backend'e göre otomatik. real + vakum -> ur10e_suction_cup
+    # (gerçek SRDF: <chain base_link="ur10e_table" tip_link="ur10e_suction_cup"/>)
+    end_effector: ""
+    planner_id: "RRTConnectkConfigDefault"
+    # Eklem limitlerinin ORANI (0-1), mutlak hız değil.
+    # 13 Ağu 2026: gerçek robota geçiş için 0.2 -> 0.05 düşürüldü.
+    max_velocity: 0.1
+    max_acceleration: 0.1
+    planning_attempts: 10
+    planning_time: 10.0
+
+    # Açılışta SCAN pozuna git (kamera bilekte; sorgudan önce konveyörü gören
+    # sabit bir poza gitmezsek ER 2'ye hücre duvarları sorulmuş olur).
+    move_to_scan_on_start: true
+    startup_delay_sec: 8.0
+
+    # 7 eklem, SIRA ÖNEMLİ: base_to_robot_mount (lineer ray), shoulder_pan,
+    # shoulder_lift, elbow, wrist_1, wrist_2, wrist_3.
+    # /sim/joint_states'in "name" dizisi bu sırada DEĞİL - oradan kopyalarken
+    # yeniden sıralayın.
+    #
+    # Konveyörü gören poz. 14 Ağu 2026'da HOME ile aynı yapıldı: yeni poz daha
+    # yukarıdan bakıyor ve daha geniş alan tarıyor. Eski değer (10 Ağu, 2pi
+    # sarımı alınmış) referans olarak duruyor:
+    #     [0.54520, -1.08288, -0.60626, 0.53539, -3.07005, 1.08265, 0.00141]
+    #
+    # Bu alan yalnızca scan_pose_* dizileri BOŞSA kullanılan eski yedektir;
+    # etkin olan scan_pose_joints'in ilk pozudur. İkisi bilerek aynı tutuluyor.
+    scan_joints: [0.493703, -1.0559929052936, -0.7089381974986573, 0.517733399068014, -2.9496828518309535, 1.055835247039795, 0.002240318339318037]
+    # HOME (14 Ağu 2026, kullanıcı ölçtü). Daha yukarıdan bakar, geniş alan
+    # tarar. /joint_states'ten okunan sıra farklıydı, buraya YENİDEN SIRALANDI:
+    #   base_to_robot_mount +0.493703   (ray, limit 0.05..1.95 icinde)
+    #   shoulder_pan        -1.0559929052936
+    #   shoulder_lift       -0.7089381974986573
+    #   elbow               +0.517733399068014
+    #   wrist_1             -2.9496828518309535
+    #   wrist_2             +1.055835247039795
+    #   wrist_3             +0.002240318339318037
+    home_joints: [0.493703, -1.0559929052936, -0.7089381974986573, 0.517733399068014, -2.9496828518309535, 1.055835247039795, 0.002240318339318037]
+
+    # --- ÇOK POZLU TARAMA -------------------------------------------------
+    # Bilek kamerası kolla hareket ediyor; konveyör ile toolkit aynı kadraja
+    # sığmıyor (aralarında 1.17 m ray hareketi var). Hedefler pozlarda sırayla
+    # aranır, bulunan ilk pozda durulur. Tespitler world frame'ine çevrildiği
+    # için farklı pozlardan gelenler aynı haritada birikir.
+    #
+    # scan_pose_joints DÜZLEŞTİRİLMİŞ dizidir: poz sırasına göre 7'şerli.
+    # İlk poz aynı zamanda açılış pozudur.
+    scan_pose_names: ["conveyor", "toolkit"]
+    scan_pose_joints: [
+      # conveyor - 14 Ağu 2026'da HOME pozuyla AYNI yapıldı (kullanıcı isteği):
+      # daha yukarıdan bakıyor, daha geniş alan tarıyor. Böylece açılış, HOME
+      # ve konveyör taraması tek bir poz; aralarında boşuna hareket yok.
+      # Eski: [0.54520, -1.08288, -0.60626, 0.53539, -3.07005, 1.08265, 0.00141]
+      0.493703, -1.0559929052936, -0.7089381974986573, 0.517733399068014, -2.9496828518309535, 1.055835247039795, 0.002240318339318037,
+      # toolkit   (11 Ağu 2026 - YANDAN bakış yerine ÜSTTEN bakış)
+      #
+      # NEDEN DEĞİŞTİ: eski poz rafa neredeyse yatay bakıyordu. O kadrajda beş
+      # raf tabanı da birbirinin aynısı dört koyu dikdörtgen olarak çıkıyor ve
+      # "üstten açık olan sıra" görsel olarak ayırt edilemiyordu. ER üst üste
+      # üç koşuda alt gözleri gösterdi (z=0.729 / 0.519 / 0.261); doğrulama
+      # hepsini eledi ve görev bırakma hedefi bulunamadan düştü.
+      #
+      # Yeni pozda kamera (0.066, 1.279, 1.819) noktasından 67.2 derece
+      # AŞAĞI bakıyor. Üst tepsi kadrajın en büyük düz yüzeyi (7281 piksel) ve
+      # üstünde hiçbir şey olmadığı doğrudan görünüyor; alt gözler ise açıkça
+      # kapalı duruyor. Dört seviye de görünür durumda:
+      #   z=0.938 (üst tepsi) 7281 px | 0.727: 1998 | 0.517: 1174 | 0.259: 2108
+      #
+      # Ham okunan /joint_states'ten YENİDEN SIRALANDI (oradaki sıra farklı):
+      #   base_to_robot_mount +1.59841
+      #   shoulder_pan        -1.63740
+      #   shoulder_lift       -1.20571
+      #   elbow               +0.67570
+      #   wrist_1             -2.61012
+      #   wrist_2             +1.63544
+      #   wrist_3             -0.39832
+      # Hiçbiri sarım gerektirmiyor, hepsi limitlerin içinde.
+      1.59841, -1.63740, -1.20571,  0.67570, -2.61012,  1.63544, -0.39832,
+    ]
+    # Render modu POZ BAŞINA. Tek bir mod iki bakışa birden yetmiyor:
+    #
+    # conveyor: banda TEPEDEN bakılıyor, parça düz bir yüzeyin üstünde 29 mm'lik
+    #           bir çıkıntı. normals'ta üst yüz bantla aynı normale sahip olduğu
+    #           için görünmüyordu (1.7/255) -> relief şart.
+    # toolkit : rafa YANDAN bakılıyor, sahne 0.68-1.84 m'ye yayılıyor. relief'in
+    #           yükseklik penceresine piksellerin ancak %50'si giriyor, gerisi
+    #           doyuyor ve görüntü okunmaz oluyor (ER hiçbir şey bulamadı).
+    #           normals burada sahneyi 3B gri render gibi gösteriyor, raf
+    #           gözleri net seçiliyor.
+    scan_pose_render_mode: ["relief", "normals"]
+    # relief yükseklik penceresi (yalnız relief pozlarında kullanılır).
+    # Boş göz bir ÇUKUR olduğu için lo negatif olmalı: 45 mm derin göz için
+    # ölçüldü, lo=-0.005'te 28/255, lo=-0.08'de 50/255 kontrast.
+    scan_pose_height_lo_m: [-0.005, -0.080]
+    scan_pose_height_hi_m: [ 0.120,  0.120]
+    # Poz değiştikten sonra derinlik/bulut tazelensin diye beklenen süre.
+    # Kısa tutulursa ER'ye bir ÖNCEKİ pozun karesi gösterilir ve tespit o anki
+    # TF ile çevrildiği için sessizce yanlış bir 3D nokta üretilir.
+    scan_settle_sec: 1.0
+
+    # --- UÇ ELEMAN GEOMETRİSİ --------------------------------------------
+    # İkisi de ur10e_suction_cup mesh'inden ÖLÇÜLDÜ (10 Ağu 2026).
+    #
+    # tool_approach_vector: emme yönü, uç eleman frame'inde. EKSENE HİZALI
+    # DEĞİL. Mesh'e dönel yüzey ekseni uyduruldu (normaller eksenini keser
+    # kısıtı, alan ağırlıklı): sonuç (0.8661, 0.4999, 0.0002) yani frame X'ten
+    # tam 30.00 derece - CAD'de kasıtlı bir açı. Bağımsız iki ölçüm doğruladı:
+    # montaj yüzü normalinin tersi ve ağız düzlemi uyumu (0.56 derece fark).
+    #
+    # Doğrulama: gerçek eksen boyunca kesit yarıçapı düzgün ilerliyor
+    # (sap 4.9 -> şaft 7.1 sabit -> çan 15.6 -> 19.8 -> ağız 20.0 mm), oysa
+    # frame X boyunca rastgele zıplıyordu (4.7, 11.7, 7.9, 11.8, 3.7, ...).
+    #
+    # Önce "z" varsayılmıştı: kap YATAY geliyordu (90 derece hata).
+    # Sonra "x": 30 derece eğik kalıyordu.
+    #
+    # tool_tip_offset: kap ağzının frame ORİJİNİNE göre yeri. Ağız halkası
+    # eksen boyunca 84.2 mm'de, yarıçapı 19.5 mm (Ø39 mm kap) ve eksene dik
+    # (halkanın eksen boyunca std'si 0.07 mm - yani ağız gerçekten düz).
+    #
+    # DÜZELTİLDİ 11 Ağu 2026: burada 156 mm yazıyordu. Mesh 84 mm'de bitiyor,
+    # yani böyle bir nokta kabın 72 mm ÖTESİNDE, havada. Hedefi frame'e
+    # çevirirken (frame = uç - R*offset) offset ne kadar uzunsa kol o kadar
+    # geride durur: kap her yüzeyin 71.8 mm ÜSTÜNDE kalıyordu ve vakum boşa
+    # çekiyordu. Belirti algı hatası gibi görünüyordu ama kamera doğru yeri
+    # gösteriyordu - yanlış olan uç eleman sabitiydi.
+    #
+    # İKİSİ DE ELLE YAZILMAZ. Ölç ve buraya yapıştır:
+    #     ros2 run ch09_conveyor_pick_place measure_tcp --compare 0.07292 0.04210 0.0
+    # URDF'i /robot_state_publisher'dan, yani MoveIt'in planladığı modelin ta
+    # kendisinden okur; mesh'e dönel yüzey ekseni uydurup ağız halkasını bulur.
+    # Kap değişirse tek yapılacak bu komutu tekrar çalıştırmak.
+    tool_approach_vector: [0.8660254, 0.5, 0.0]
+    tool_tip_offset: [0.072920, 0.042100, 0.0]
+
+    # Yüzey normalini en yakın dünya eksenine oturtma toleransı (derece).
+    # Bant ve raf yüzeyleri işlenmiş ve dünya eksenlerine göre düz; normali
+    # derinlik yamasından PCA ile kestirince birkaç derece gürültü biniyor.
+    # ÖLÇÜLDÜ: bırakma pozunda kap dikeyden 3.99 derece sapmıştı. Ø23 mm'lik
+    # kapta 4 derece, bir kenarda ~1.6 mm boşluk demek - gerçek donanımda
+    # vakum sızdırır.
+    #
+    # Bu bir MODELLEME VARSAYIMI: yüzeylerin gerçekten eksene hizalı olduğunu
+    # kabul eder. Eğik yüzeylerle çalışacaksanız 0.0 yapıp kapatın.
+    # Kavranabilirlik eğim denetimi her hâlükârda ÖLÇÜLEN normale bakar.
+    normal_snap_deg: 15.0
+
+    # Yüzey normali çıkarılamazsa kullanılan yedek oryantasyon (yukarıdan aşağı).
+    fallback_quat_xyzw: [1.0, 0.0, 0.0, 0.0]
+    # Yaklaşma, oturtma ve kaldırma NORMAL boyunca yapılır (dünya Z'si boyunca
+    # değil): dikey bir yüzeyden parça çekmek ancak böyle doğru olur.
+    # Hedefi KAVRAMADAN ÖNCE MoveIt'e sor (/compute_ik, çarpışma denetimli).
+    #
+    # ÖLÇÜLDÜ 11 Ağu 2026: ER, toolkit rafında üstten İKİNCİ sıradaki gözü
+    # gösterdi. Nokta doğruydu (ölçülen taban 0.729 m, mesh'teki raf 0.727 m),
+    # ama o gözün TAVANI var - üstündeki raf 211 mm yukarıda. Yukarıdan dik
+    # inince emme kabının sapı rafın içinden geçiyordu (MoveIt: kap <-> bin,
+    # 9.5 mm). Gözün ağzı 172 mm, kavrayıcı gövdesi Ø167 mm; yandan da girmez.
+    # Bu, parça KAVRANDIKTAN sonra ortaya çıkıyordu - kol havada asılı kaldı.
+    #
+    # Doğrulama açıkken ulaşılamaz aday elenir ve ER'nin verdiği bir SONRAKİ
+    # aday denenir (üst sıra gözü, tabanı 0.938 m, yukarı açık - MoveIt onu
+    # geçerli buluyor).
+    validate_targets: true
+    # ik_timeout_sec: doğrulamanın MoveIt'e verdiği IK bütçesi. Bu, doğrudan
+    # görev süresidir - doğrulama yüzlerce sorgu yapıyor ve GEÇERSİZ bir poz
+    # bütçenin TAMAMINI yakıyor.
+    #
+    # ÖLÇÜLDÜ (13 Ağu 2026, canlı hücre):
+    #   bütçe |  geçerli poz  |  geçersiz poz
+    #   ------|---------------|---------------
+    #   3.0 s |     11 ms     |    3004 ms
+    #   1.0 s |     26 ms     |    1005 ms
+    #   0.5 s |      5 ms     |      56 ms     <-- taban; altına inmek kazandırmıyor
+    #
+    # Geçerli poz her bütçede milisaniyelerde çözülüyor; ödenen süre yalnızca
+    # RED cevabının maliyeti. 0.5 s'de çözücü tek geçiş yapıyor ve 56 ms'de
+    # dönüyor.
+    #
+    # Düşürmek cevabı DEĞİŞTİRMİYOR: 55 poz (üst sıra ızgarası + tavanlı
+    # raflar + konveyör + erişilemez uç) 3.0 ve 0.5 ile karşılaştırıldı,
+    # 0 fark - ama toplam süre 63.6 s -> 1.7 s (38x).
+    #
+    # DİKKAT: daha da düşürmek kazandırmaz (taban 56 ms) ama zor-ama-geçerli
+    # bir pozda çözücüye yeniden deneme hakkı bırakmaz. 0.5'in altına inme.
+    ik_timeout_sec: 0.5
+
+    # Yaklaşma mesafesi UYARLANIR: approach_distance ilk denenir, çarpışırsa
+    # sırayla küçültülür. Tek sabit değer iki yere birden uymuyor - bantta
+    # 15 cm iyi, raf gözünde aynı 15 cm önkolu kablo kanalına sokuyor
+    # (ölçüldü: üst sırada 0.15 geçersiz, 0.10 ve altı geçerli).
+    approach_distance_candidates: [0.15, 0.12, 0.10, 0.08, 0.06]
+    approach_distance: 0.15
+    # TOUCH hedefinin yüzeye göre yeri, DIŞA BAKAN NORMAL boyunca ölçülür:
+    #   pozitif = yüzeyin ÜSTÜNDE (boşluk)
+    #   negatif = yüzeye BASTIR
+    # Aynı _offset(contact, normal, d) çağrısı approach_distance için de
+    # kullanılıyor ve orada +0.15 "15 cm YUKARIDA" demek - işaret aynı.
+    #
+    # DÜZELTİLDİ 13 Ağu 2026: burada +0.002 yazıyordu, yani kap yüzeyin 2 mm
+    # ÜSTÜNDE duruyordu - oysa parametrenin kendi açıklaması "kabın yüzeye
+    # bastırma payı" diyordu. İşaret, tarif edilenin tersiydi. Ø39 mm'lik kap
+    # kauçuk ve birkaç mm eziliyor; sızdırmaz conta ancak bastırınca oluşur.
+    #
+    # DİKKAT: tek başına 2-5 mm'lik bir etkidir. Kolun hedefin belirgin şekilde
+    # (santimetre mertebesinde) üstünde kalması BAŞKA bir sebepten olur -
+    # algılanan yüzey yüksekliği ile gerçeğin farkı. Ölçmek için:
+    #     python3 test/surface_offset.py --truth <şerit metreyle ölçülen z>
+    #
+    # -0.003 -> -0.008 (14 Ağu 2026). Kamera kalibrasyonu şerit metreyle
+    # oturtulduktan sonra kap kutunun birkaç mm üstünde kalıyordu. Bu kalıntı
+    # bant yüksekliği ölçümünün kendi belirsizliği mertebesinde (şerit metre
+    # ~0.845 okudu; 2-3 mm oynaması normal).
+    #
+    # NEDEN BURAYA, kamera kalibrasyonuna DEĞİL: ur_sick_optical_joint bir
+    # GEOMETRİ ifadesidir ve ölçülmüş olmalıdır; oraya yazılan her mm sahnedeki
+    # HER yüzeye (raf, bin, tezgâh) da uygulanır. Ölçülmemiş bir kalıntıyı
+    # oraya gömmek, kavramayı düzeltirken bırakma yüksekliklerini bozar.
+    # touch_offset ise zaten "kabın esneme payı" demek ve yalnızca kavrama
+    # anındaki son basmayı etkiler. Ø39 mm kauçuk kap 5 mm ezilmeyi rahat
+    # kaldırır. Kalıntı büyürse (>1 cm) çözüm burası değil, tekrar ölçmektir.
+    touch_offset: -0.008
+
+    # Vakum İLK denemede tutmazsa: kabı normal boyunca bu kadar daha bastır ve
+    # yinele. touch_press_retries = 0 ile kapanır (eski davranış).
+    #
+    # 17 Ağu 2026: belirti "kap nesneye değiyor ama tam oturmuyor, vakum
+    # kurulamıyor ve görev iptal oluyor". Eksik olan çoğu zaman birkaç
+    # milimetre - ama tek bir touch_offset bunu karşılayamıyor, çünkü aynı
+    # değer iyi durumda parçayı bantta İTTİRİYOR. Çare, sabit değeri
+    # derinleştirmek değil, YALNIZCA sızdırdığında derine basmak.
+    #
+    # Toplam ek basma = touch_press_step * touch_press_retries = 8 mm. Ø39 mm
+    # kauçuk kabın ezilme payının içinde. Hareket cartesian ve normal boyunca,
+    # yani yanal bileşeni yok: parçayı ittirmez.
+    #
+    # DİKKAT: bu bir TELAFİDİR. Her kavramada devreye giriyorsa sebep yüzey
+    # yüksekliğinin yanlış okunmasıdır; log "vakum N mm basmada kuruldu" derse
+    # touch_offset'i büyütmeden ÖNCE ölçün:
+    #     python3 test/surface_offset.py --truth <şerit metreyle ölçülen z>
+    touch_press_step: 0.004
+    touch_press_retries: 2
+
+    # Kavramada ARA DURAK kullanılsın mı (APPROACH_PICK).
+    #
+    # true  : kol önce temas noktasının approach_distance kadar NORMAL boyunca
+    #         ötesine gider, sonra oradan cartesian iner. İniş kabın kendi
+    #         ekseni boyunca olur; dikey yüzeylerden parça çekmenin tek doğru
+    #         yolu budur.
+    # false : ara durak yok, doğrudan temas pozuna serbest plan.
+    #
+    # NE ZAMAN false: ara durak, temas noktasının tam ÜSTÜNDE değil, ÖLÇÜLEN
+    # NORMAL boyunca ötesindedir. Normal dikeyden theta kadar sapmışsa ara
+    # durak nesnenin yanına düşer (15 cm'de: 8 derece -> 21 mm, 15 derece ->
+    # 40 mm) ve oradan gelen EĞİK iniş, kabı nesnenin üstünden geçirmek yerine
+    # yanına sürter - nesne ittirilir, konumu değişir ve kavrama bozulur.
+    # Temas pozunun kendisi bundan etkilenmez (o zaten temas noktasıdır), yani
+    # ara durağı atlamak süpürmeyi ortadan kaldırır.
+    #
+    # BEDELİ: iniş yönü artık planlayıcının seçtiği yön; kabın ekseni boyunca
+    # olduğu garanti değil. Bu yüzden varsayılan true kaldı - dikey/eğik
+    # yüzeylerde ara durak gereklidir.
+    #
+    # ÖNCE LOGA BAKIN: normal oturtulamadığında (normal_snap_deg aşıldığında)
+    # locator artık UYARI basıyor ve yanal kaymayı mm cinsinden yazıyor.
+    # O uyarı yoksa normal dikeydir, ara durak temas noktasının tam üstündedir
+    # ve süpürmenin sebebi başka yerdedir.
+    # 17 Ağu 2026: teşhis için kısa süre kapatıldı, sonra GERİ AÇILDI.
+    #
+    # Teşhis sonucu: sorun ara durak DEĞİLDİ. Lineer ray, yörüngeyi sabit
+    # 53 mm geriden takip ediyordu (linear_axis_adapter'daki ölü feedforward,
+    # orada anlatıldı). Kap yanlış Y'de parçanın üstüne iniyor, yörünge
+    # bitiyor, ray kalan 53 mm'yi kap parçaya basılıyken kapatıyor ve
+    # PARÇAYI BANT ÜZERİNDE SÜRÜKLÜYOR; vakum da parçaya değil çıplak
+    # konveyöre yapışıyor.
+    #
+    # Ara durak bu yüzden artık daha da gerekli: ray önce YUKARIDA hedefine
+    # varıyor, waypoint_settle_sec artığı kapatıyor, iniş ancak ondan sonra
+    # ve ray neredeyse duruyorken yapılıyor. Kapatmak, inişi rayın hâlâ
+    # hareket ettiği ana denk getirir - sürüklemenin tam reçetesi.
+    pick_approach_enabled: true
+
+    # Her waypoint'e VARDIKTAN sonra beklenecek süre (sn). 0 = kapalı.
+    #
+    # 14 Ağu 2026: hareketin "başarılı" dönmesi eklemlerin fiziksel olarak
+    # oturduğu anlamına gelmiyor. Lineer eksen (base_to_robot_mount, Festo
+    # sürücü) hedefe vardığını raporladıktan sonra da yol almaya devam ediyor;
+    # beklemeden sıradaki waypoint'e geçilince kol konumuna gelmeden yeni
+    # yörüngeye başlıyor ve kap parçaya tam oturmuyordu.
+    #
+    # ÖNLEMDİR, çözüm değil: asıl mesele sürücünün erken "vardım" demesi.
+    # Kalıcı çözüm controller'ın goal_tolerance / stopped_velocity_tolerance
+    # ayarlarında. Görev süresine doğrudan eklenir: 8 waypoint'lik bir pick and
+    # place'te 2.0 sn -> +16 sn.
+    waypoint_settle_sec: 2.0
+    # Kavramadan sonra parçayı yüzeyden çekme mesafesi.
+    #
+    # 17 Ağu 2026: ara durak AÇIKKEN bu değer KULLANILMIYOR. Kavramadan sonra
+    # kol, APPROACH_PICK pozunun kendisine geri dönüyor - o poza saniyeler önce
+    # varıldığı için gidilebilirliği kanıtlanmış ve yol inişin birebir tersi.
+    # Burada yeni bir poz hesaplamak, kanıtlanmamış bir poza taze IK/plan
+    # istemek demekti ve 7 eksenin artıklığı araya ray hareketi sokabiliyordu.
+    #
+    # Yalnızca pick_approach_enabled=false iken geçerli: o zaman kanıtlanmış
+    # bir poz yok, çekilme mesafesi bir yerden gelmeli.
+    lift_distance: 0.20
+
+    # place_clearance: iniş sonunda KAP UCUNUN bırakma yüzeyinden yüksekliği.
+    # Parça kabın altında kendi boyu kadar sarktığı için parçanın altı bundan
+    # o kadar aşağıdadır; sayı parçanın değil, kabın ucunundur.
+    #
+    # 14 Ağu 2026: bu sayı artık ÖLÇÜLEN PARÇA BOYUNUN ÜSTÜNE eklenen paydır,
+    # mutlak yükseklik değil. _lift_for_payload bırakma temas noktasını
+    # parçanın boyu (payload.size[2]) kadar yukarı taşıyor, yani gerçek hedef
+    #     kap ucu = yüzey + parça_boyu + 0.23
+    # Karşılığı: parçanın ALTI yüzeyden 23 cm yukarıda. Parça boyundan
+    # bağımsızdır - küçük obje de büyük obje de kendi boyuna göre bırakılır.
+    place_clearance: 0.23
+
+    # BIRAKMA hedefinde dikeyden bu kadar sapmış bir yüzey normali kabul
+    # edilmez; yerine yukarıdan iniş kullanılır. Gerekçe fizik: yatay normalli
+    # bir yüzeye parça bırakılamaz, yerçekimi düşürür.
+    #
+    # 11 Ağu 2026 ölçümü: ER üst bölmeyi DOĞRU gösterdi, ama işaret ettiği
+    # piksel rafın ön yüzüne düştü ve normal (0,-1,0) çıktı. Kol yandan
+    # girmeye çalıştı, beş yaklaşma mesafesinin beşi de çarpıştı. Aynı nokta
+    # yukarıdan inişle 15 cm'de geçerli. 0 = denetimi kapat.
+    place_max_normal_tilt_deg: 45.0
+
+    # BIRAKMA NOKTASINI YÜZEY BOYUNCA KAYDIRARAK ARAMA
+    #
+    # ER gözü doğru buluyor ama noktayı gözün ortasına koymuyor. 13 Ağu 2026:
+    # üst göz için (0.925, 1.659) döndü; gözün y sınırları 1.519/1.691, yani
+    # ortası 1.605 - nokta 54 mm kaçık. Taşınan kutu 83 mm geniş ve kabın
+    # altında ortalanıyor, dolayısıyla 1.659 ± 0.0415 -> 1.7005: bölme
+    # duvarının 9.5 mm İÇİNE giriyor. Log: ur10e_stackable_bin<->gemini_payload.
+    # Prompt'a "very middle point" yazmak bunu düzeltmedi.
+    #
+    # Bu yüzden doğrulama, ER'nin noktası çarpışırsa yüzey boyunca (normale DİK
+    # düzlemde) içten dışa arıyor ve parçanın sığdığı en yakın noktayı seçiyor.
+    # Yalnızca BIRAKMA için: kavramada kaydırmak kabı parçanın yanına indirir.
+    #
+    # Yarıçaplar sıralanır; boş liste aramayı kapatır. Maliyet, yalnızca ER'nin
+    # noktası tutmadığında ödenen birkaç ek IK çağrısıdır.
+    place_search_radii_m: [0.02, 0.04, 0.06]
+    place_search_directions: 8
+
+    # BIRAKMA YAKLAŞMA MESAFELERİ - kavramanınkinin TERSİ sırada, büyükten.
+    #
+    # Doğrulama bir DURUMU denetler (IK), oysa bu arıza YOLDAydı. 13 Ağu 2026,
+    # nokta gözün ortasına (0.924, 1.603) çekildikten SONRA ölçüldü:
+    #
+    #   d      kutu altı   IK   move_group planı
+    #   22 cm    1.129      1    başarılı
+    #   20 cm    1.109      1    başarılı
+    #   18 cm    1.089      1    BAŞARISIZ (-2)
+    #   15 cm    1.059      1    BAŞARISIZ (-2)
+    #
+    # Sınır rafın üst kenarında: 1.095. Kutunun altı bunu geçmezse kutu
+    # hedefte zaten gözün içindedir ve planlayıcı onu YANDAN sokmak zorunda
+    # kalır - move_group "Computed path is not valid. Invalid states at index
+    # locations: [282 283 284] out of 288" diyor, yani geçersiz durumlar yolun
+    # SONUNDA. IK her mesafede "geçerli" dediği için doğrulama bunu göremiyor.
+    #
+    # 11 Ağu'da bir koşunun 15 cm ile tutması ŞANSTI: yanal giriş yolu bazen
+    # çarpışmadan geçiyor. Büyükten başlamak bunu belirlenime çeviriyor.
+    #
+    # BİLİNEN SINIR: doğrulama yol denetlemiyor. Liste, hedefin bulunduğu
+    # yapının üstünü geçecek kadar büyük bir değerle BAŞLAMALI.
+    #
+    # 14 Ağu 2026: bu değerler de PARÇA BOYUNUN ÜSTÜNE eklenen paylardır
+    # (place_clearance ile aynı telafi):
+    #     kap ucu = yüzey + parça_boyu + d
+    # Yani parçanın altı sırasıyla 23 / 21 / 19 cm yukarıda. Liste büyükten
+    # küçüğe denenir; ilki place_clearance ile aynı olduğu için normal durumda
+    # yaklaşma ve bırakma aynı pozdur ve iniş sıfır uzunluktadır.
+    place_approach_candidates: [0.23, 0.21, 0.19]
+
+    # Bırakmadan önce place_clearance yüksekliğine inilsin mi.
+    #
+    # false (varsayılan): parça APPROACH_PLACE pozundan, yani hedefin
+    #   approach_distance kadar üstünden bırakılır. Raf gözüne inerken
+    #   kartezyen plan sürekli yarıda kalıyordu (önce %20, kap düzeldikten
+    #   sonra %75) - gripper gövdesi (Ø~120 mm) gözün ağzına sığmıyor.
+    #   Parça 15 cm'den düşer; hafif ve kırılmaz parçalar için sorun değil.
+    # true: klasik davranış. Gözün ağzı gövdeyi alacak kadar genişse ya da
+    #   parçayı yavaşça bırakmak gerekiyorsa açın; approach_distance'ı da
+    #   küçültmek gerekebilir.
+    # 13 Ağu 2026: AÇILDI. Yukarıdaki gerekçe artık geçerli değil, çünkü
+    # yaklaşma pozu place_approach_candidates ile yapının ÜSTÜNE taşındı -
+    # iniş de artık gövdeyi göze sokmaya çalışan bir hareket değil, açık
+    # üstten dik bir iniş. ÖLÇÜLDÜ (/compute_cartesian_path, kutu kavrayıcıda,
+    # nokta gözün ortasında): 25/22/20 cm -> 5/8/10 cm inişlerin DOKUZU da
+    # fraction 1.000. Kapalı bırakılırsa parça 25 cm'den düşerdi.
+    descend_before_release: true
+
+    # KARTEZYEN YOL EŞİKLERİ - ikisi AYRI, çünkü yarım kalmanın bedeli farklı.
+    #
+    # DİKKAT: pymoveit2, fraction >= eşik olduğunda KISMİ yolu YÜRÜTÜR ve
+    # başarı bildirir. Yani eşik, "ne kadar eksik kalmasına razıyız" demektir.
+    #
+    # cartesian_min_fraction (TOUCH, LIFT, RETREAT): yüksek kalmalı. TOUCH
+    #   yarıda kalırsa kap parçaya hiç değmez ve boşluğu kavrarız.
+    # release_min_fraction (yalnız iniş): gevşek. Yaklaşma pozu artık yapının
+    #   ÜSTÜNDE ve ayrıca doğrulanmış, yani parça oradan bırakılsa bile hedefin
+    #   üstündedir. İniş sadece düşme yüksekliğini azaltıyor.
+    #   13 Ağu 2026: kartezyen planın %29'u görevi düşürmüştü, oysa ulaşılan
+    #   nokta bırakmak için gayet uygundu. İniş hiç olmazsa da görev ölmez -
+    #   parça yaklaşma pozundan bırakılır ve log bunu söyler.
+    cartesian_min_fraction: 0.99
+    release_min_fraction: 0.2
+
+    # --- VGC10 vakum kavrayıcı ---
+    # vacuum | none. VGC10'da aktüe edilen eklem yoktur; kavrama Modbus
+    # komutuyla yapılır ve MoveIt2Gripper bu donanımda tanımsızdır.
+    gripper_type: "vacuum"
+    vacuum_command_topic: "/OnRobotVGOutput"
+    vacuum_status_topic: "/OnRobotVGInput"
+    vacuum_pct: 60              # OnRobot sınırı: 80'i aşmayın
+    vacuum_use_both_channels: true
+    # Sim'de VGC10 sürücüsü çalışmaz, durum mesajı hiç gelmez -> false bırakın.
+    # BURAYI DEĞİŞTİRMEYİN - bu ayar artık mode overlay'lerinde:
+    #     mode_real.yaml -> true   (VGC10 sürücüsü ayakta, vakum gerçekten ölçülür)
+    #     mode_sim.yaml  -> false  (sim'de sürücü yok, durum mesajı hiç gelmez)
+    # Buradaki değer her iki modda da EZİLİR; sadece mod dosyası olmayan bir
+    # kurulum için güvenli taban olarak duruyor (sessiz boş kavrama yerine
+    # gürültülü başarısızlık).
+    #
+    # 14 Ağu 2026: bu satır tek başına true yapıldığı için SİM ÜÇ GÜN BOYUNCA
+    # HİÇ KAVRAYAMADI. Belirti yanıltıcıydı - kol kutuya iniyor, hiçbir şey
+    # olmuyor, eve dönüyordu; Gazebo'daki DetachableJoint aslında kuruluyordu
+    # ama onay gelmeyince _release() onu hemen çözüyordu.
+    # ÖLÇÜLDÜ: ros2 topic info /OnRobotVGInput -> "Publisher count: 0",
+    # tek uç gemini_pick_place'in kendi aboneliği.
+    vacuum_require_confirmation: true
+    vacuum_confirm_pct: 15.0
+    vacuum_timeout_sec: 3.0
+
+    # --- Gazebo'da gerçekten tutma (DetachableJoint) ---
+    # gz-sim 8.14'te vakum/suction eklentisi YOK. Parçanın taşınabilmesi için
+    # emme kabı ile parça arasına koparılabilir sabit bir eklem kuruluyor
+    # (whole_cell_sim.urdf.xacro). Bu topic'ler ROS→Gazebo köprüsüne gider.
+    #
+    # Bağ, mesajın ULAŞTIĞI ANDAKİ göreli pozla kurulur; bu yüzden attach,
+    # vakum komutuyla aynı anda (kap parçaya değerken) gönderiliyor.
+    #
+    # GERÇEK ROBOTTA ZARARSIZ: köprü yalnızca sim launch'ında var, gerçek
+    # hücrede bu topic'leri kimse dinlemez. Kapatmak için boş bırakın.
+    sim_attach_topic: "/vacuum/attach"
+    sim_detach_topic: "/vacuum/detach"
+
+    # --- taşınan parçanın çarpışma gövdesi ---
+    # Kavranan parça artık robotun bir parçasıdır. MoveIt bunu bilmezse kutuyu
+    # rafın kenarına, konveyöre ya da kolun kendisine sürter - planlayıcı için
+    # orada hiçbir şey yoktur.
+    #
+    # ELLE VERİLİR: algı parçanın boyutunu ÖLÇMÜYOR (ER bir nokta veriyor).
+    # Buradaki değer RedCube'un ölçüsü. Başka bir parça alacaksanız burayı
+    # güncelleyin; kuşkudaysanız BÜYÜK tutun - fazla büyük kutu gereksiz yere
+    # plan reddettirir, küçük kutu ise sessizce çarpışmaya izin verir.
+    # Boş liste = kapalı (parça sahneye hiç eklenmez).
+    # Boyut ÖNCE DERİNLİKTEN ölçülür; payload_size yalnızca ölçüm başarısız
+    # olursa devreye girer (yeterli piksel yok, malzeme okumadı, yükseklik
+    # sınırlar dışında). Log hangisinin kullanıldığını yazar.
+    #
+    # Ölçüm neyi verir: uzunluk, genişlik, yükseklik VE düzlem içi yönelim.
+    # Yükseklik en güvenilir olanıdır - üst yüzün ve destek düzleminin baskın
+    # seviyeleri arasındaki fark, yüzlerce pikselden. Sentetik sahnede 5 mm'lik
+    # piksel gürültüsünde bile 30 mm'lik kutu 3 mm hatayla ölçüldü.
+    #
+    # Ölçemediği şeyler (hepsi sessizce eksik sonuç verir):
+    #   * destek düzleminin ALTI (ayaklı/oyuk tabanlı parçada siluet ölçülür)
+    #   * "düz bir yüzeyin üstünde duruyor" varsayımı bozulursa referans yanlış
+    #   * oklüzyonda kalan yüzler -> ayak izi EKSİK çıkar
+    #   * ToF'un okuyamadığı malzemeler (mat siyah, parlak metal, şeffaf)
+    payload_measure: true
+    # Her kenara eklenen güvenlik payı (iki yana da uygulanır).
+    payload_margin_m: 0.005
+    # Bu aralık dışındaki yükseklikler ölçüm hatası sayılır ve yedeğe düşülür.
+    payload_min_height_m: 0.004
+    payload_max_height_m: 0.30
+
+    # Ölçülen parçanın YATAY aklı başındalık sınırı. Bunu aşan ölçüm
+    # reddedilir ve payload_size'a düşülür.
+    #
+    # 17 Ağu 2026: yükseklik iki yönden sınırlıydı ama ayak izi hiç
+    # sınırlanmamıştı. Bir koşuda ölçüm 881x347x4 mm çıktı (68219 piksel,
+    # görüntünün %31'i) - bu bir parça değil, konveyör bandının kendisiydi.
+    # 891x357 mm'lik kutu emme kabına iliştirilince o andan sonra hiçbir plan
+    # üretilemedi; kartezyen de serbest de %0 döndü. Belirti "robot parçayı
+    # kaldıramadı" olarak göründü, sebebi ise iki adım önceki ölçümdü.
+    #
+    # Vakum kabının taşıyabileceğinden büyük bir ölçüm, ölçümün başarısız
+    # olduğunun kanıtıdır. Gerçekten büyük parça taşıyacaksanız bu değeri
+    # büyütün; 0 = sınır yok (eski davranış).
+    payload_max_span_m: 0.45
+
+    payload_size: [0.14, 0.083, 0.03]
+    payload_object_id: "gemini_payload"
+    # Parçaya DEĞMESİ normal olan link'ler; verilmezse kavrama anı çarpışma
+    # sayılır ve hiçbir plan üretilemez. Boş = önekten türetilir
+    # (suction_cup, vacuum_gripper, tool0, wrist_3_link).
+    payload_touch_links: [""]
+
+    # --- güvenlik ---
+    # ER yanlış yeri gösterirse ya da derinlik gürültülüyse hedef buraya
+    # düşmez ve hareket hiç planlanmaz. Kendi hücrenize göre daraltın.
+    # z alt sınırı 0.60'tan 0.45'e indirildi: konveyör yüzeyi ölçümde ~0.58 m
+    # çıkıyor ve 0.60 sınırı kutunun kendisini reddediyordu.
+    workspace_min: [-2.0, -2.0, 0.45]
+    workspace_max: [2.0, 3.0, 2.00]
+
+    # true iken tüm algı çalışır ama robot hareket etmez (ilk denemeler için)
+    dry_run: false
+
+    # ─────────────────────────────────────────────────────────────────
+    # koşu kaydı (recorder_node)
+    # ─────────────────────────────────────────────────────────────────
+    # Kayıt düğümü PASİFTİR: yalnız dinler. Kapatmak için launch'a
+    # record:=false verin, buradaki ayarları değiştirmeye gerek yok.
+
+    # Boş = ~/ros2_book_output/ch09/recordings/. install/ altındaki kopyaya
+    # yazmanın anlamı yok, colcon build onu siliyor.
+    record_root: ""
+    # Klasör adına eklenecek etiket; launch'taki run_name argümanı bunu ezer.
+    record_run_name: ""
+    record_note: ""
+
+    # Model çağrısı anındaki kareleri (render + ham derinlik + genlik + iç
+    # parametreler) diske al. Çevrimdışı ablasyonun tek koşulu budur:
+    # kapatılırsa render biçimi deneyi robot olmadan tekrarlanamaz.
+    record_frames: true
+    # Ham derinlik .npy olarak da yazılsın mı. PNG'ye çevrilmiş 16-bit
+    # kopya her hâlükârda yazılır ama o göz denetimi içindir; ablasyonda
+    # ölçeklenmemiş float gerekir.
+    record_depth_npy: true
+
+    # Kap ucunun TF izini bu sıklıkta örnekle (Hz). 0 = kapalı.
+    # Varış sapmaları bundan BAĞIMSIZ olarak her waypoint'te yazılır;
+    # bu iz yalnız hareket profilini çıkarmak için.
+    record_tcp_hz: 5.0
+    # /joint_states 100-500 Hz gelir; her N'inci mesaj yazılır.
+    record_joint_decimate: 10

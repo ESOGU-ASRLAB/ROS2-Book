@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+"""Kapı görevinin temizleme tarafının giriş noktası (bkz. cleaning_mission_runner.py)."""
+import sys
+
+from ch08_door_inspection.cleaning_mission_runner import main
+
+if __name__ == '__main__':
+    sys.exit(main())

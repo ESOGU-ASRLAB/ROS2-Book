@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ch08_door_inspection_ui</name>
+  <version>1.0.0</version>
+  <description>
+    ROS 2 ile Endüstriyel Robot Programlama - Bölüm 8: kapı görevinin tarayıcıdan
+    kullanılan operatör paneli. HIL sistemini ve ch08_door_inspection görev
+    başlatmasını yönetir; eklem, kuvvet ve kusur verisini canlı gösterir.
+  </description>
+  <maintainer email="cshyilmaz@gmail.com">Cem Süha Yılmaz</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Panelin başlattığı görev -->
+  <exec_depend>ch08_door_inspection</exec_depend>
+
+  <!-- ROS 2 istemci kütüphanesi ve dinlenen mesajlar -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+  <!-- Web sunucusu -->
+  <exec_depend>python3-flask</exec_depend>
+  <exec_depend>python3-flask-socketio</exec_depend>
+
+  <!-- Kamera akışı: görüntü kodlama (OpenCV, Pillow, NumPy) ve RTSP yoksa RViz
+       penceresinin yakalanması (Xlib). Gazebo kamerası gz.transport ile okunur;
+       o Python bağlayıcısı Gazebo Harmonic kurulumuyla gelir, yoksa o akış
+       sessizce kapanır. -->
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-pil</exec_depend>
+  <exec_depend>python3-xlib</exec_depend>
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

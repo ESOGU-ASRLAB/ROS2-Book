@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+"""İnanç haritası parça oluşturucusunun komut satırı giriş noktası (bkz. door_parts.py)."""
+import sys
+
+from ch08_door_inspection.door_parts import main
+
+if __name__ == '__main__':
+    sys.exit(main())

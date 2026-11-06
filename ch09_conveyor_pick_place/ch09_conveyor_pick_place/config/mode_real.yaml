@@ -1,0 +1,80 @@
+# mode:=real  --  gerçek SICK Visionary-T Mini V3S145-1A
+#
+# gemini_params.yaml'ın ÜSTÜNE biner. Burada YALNIZCA sim ile gerçek arasında
+# gerçekten farklı olan şeyler bulunur.
+#
+# Kullanım:
+#     ros2 launch ch09_conveyor_pick_place gemini_pick_place.launch.py mode:=real
+#
+# NOT: MoveIt tarafı DEĞİŞMEZ. Komutlar sim'de de gerçekte de /move_action'a,
+# yani gerçek MoveIt'e gider (moveit_backend: "real"). Gerçek robota geçerken
+# değiştirilecek tek şey kamera, o da bu dosya.
+/**:
+  ros__parameters:
+
+    # hil_test_whole_unified.launch.py içindeki UR kamerası:
+    #   Node(name="sick_visionary_t_mini_ur")  -- NAMESPACE YOK
+    # Sürücü topic'leri göreli açıyor (visionary_t_mini.cpp:221-225), yani
+    # namespace'siz düğümde kök namespace'e düşerler.
+    #
+    # Kawasaki kamerası namespace="sick_kawasaki" ile açılıyor; onunkiler
+    # /sick_kawasaki/... altında kalır ve buraya karışmaz.
+    cloud_topic: "/points"
+    depth_topic: "/depth"
+    camera_info_topic: "/camera_info"
+    # Gerçek SICK IR genlik üretir - sim'de olmayan tek modalite.
+    # İstenirse bir tarama pozunda scan_pose_render_mode: "intensity" olabilir.
+    intensity_topic: "/intensity"
+    # Gerçek kamerada RGB YOK (visionary_t_mini.cpp:221-225'te RGB publisher'ı
+    # bile yok). Bu topic hiç yayınlanmaz; er_image_source "render" KALMALI.
+    image_topic: "/rgb_yok"
+
+    # Gerçek hücrede VGC10 sürücüsü ayakta (hil_test_whole_unified.launch.py,
+    # use_vacuum_gripper:=true + use_fake_hardware:=false) ve /OnRobotVGInput
+    # yayınlıyor, yani ölçülen vakum gerçekten okunabiliyor.
+    #
+    # Burada kapalı olsaydı "[GRASPED]" satırı yalnızca "komut yayınlandı"
+    # demek olurdu; kol boş kavrayıcıyla yoluna devam eder ve bunu ancak
+    # parçayı bırakması gereken yerde - ya da hiç - fark ederdik.
+    # Sürücü ayakta değilken bu ayar her kavramayı düşürür; belirtisi
+    # "OnRobotVGInput hiç gelmedi" uyarısıdır (bkz. vacuum.py:grip).
+    vacuum_require_confirmation: true
+
+    # Gerçek donanımda /clock yayınlayan yok; true kalırsa ROS saati 0'da donar
+    # ve TF lookup'ları dahil zamana bağlı her şey sessizce ölür.
+    use_sim_time: false
+
+    # Sürücü bulutu "ur10e_sick_optical_frame" ile damgalar (launch'ta
+    # frame_id parametresi böyle veriliyor) - URDF'teki depth_optical_frame
+    # DEĞİL. Mesajın kendi header'ı doğru olduğu için override boş kalır;
+    # kalibrasyon farkı TF zincirinde çözülür.
+    camera_frame_override: ""
+
+    # DERİNLİĞİN BİRİMİ VE KONVANSİYONU - sim ile gerçek arasındaki asıl fark.
+    #
+    # Burada eskiden "16UC1 ve milimetre, ek ayar gerekmiyor" yazıyordu. YANLIŞ,
+    # ve iki ayrı şekilde yanlıştı. İkisi de sim'de görünmez, çünkü Gazebo
+    # 32FC1/metre/planar yayınlıyor; ikisi de gerçekte ER'ye okunmaz bir kare
+    # gönderir ve belirti "model nesneyi bulamıyor" olarak çıkar.
+    #
+    # 1) ÖLÇEK. Sürücü, kameranın HAM distance map'ini hiç ölçeklemeden /depth'e
+    #    koyuyor (visionary_t_mini.cpp:86-91). O haritanın birimi 0.25 mm'dir,
+    #    milimetre değil (VisionaryTMiniData.cpp:41, DISTANCE_MAP_UNIT = 0.25f);
+    #    sürücü ölçeği yalnızca kendi /points bulutunda uyguluyor. 1000'e bölmek
+    #    derinliği 4 KAT büyütür.
+    #    ÖLÇÜLDÜ (13 Ağu 2026, canlı hücre): ham /depth ile aynı karenin
+    #    /points ||xyz||'si karşılaştırıldı, oran 4019.6. render'ın
+    #    0.3-4.0 m geçerlilik penceresinden 217088 pikselin yalnızca 15417'si
+    #    (%7.1) geçiyordu - yani ER'ye gönderilen karenin %93'ü SİYAHTI.
+    #    Doğru ölçekle 215224 piksel, %99.1.
+    depth_scale_m: 0.00025
+    # 2) KONVANSİYON. SICK bir ToF: ışın BOYUNCA mesafe yayınlıyor
+    #    (VisionaryTMiniData.cpp:272 haritayı RADIAL veriyor), oysa render'ın
+    #    pinhole açılımı derinliğin optik eksene izdüşüm (Z) olduğunu varsayar.
+    #    Radyali Z sanmak sahneyi kâseye çevirir; hata 1/cos(theta) ile büyür ve
+    #    bu kamerada köşe açısı 41.9 derece, yani köşede %34.3 fazla - 1.8 m'lik
+    #    sahnede 0.6 m yapay kabarma. relief'in 125 mm'lik yükseklik penceresi de
+    #    normals'ın yüzey normalleri de tamamen anlamsız olur.
+    #    ÖLÇÜLDÜ, aynı kare: |depth - ||xyz|| | medyanı 8.2 mm, |depth - z|
+    #    medyanı 165 mm. Radyal olduğu kesin.
+    depth_is_radial: true

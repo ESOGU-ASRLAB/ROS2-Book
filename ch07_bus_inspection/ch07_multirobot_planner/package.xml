@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ch07_multirobot_planner</name>
+  <version>1.0.0</version>
+  <description>
+    ROS 2 ile Endüstriyel Robot Programlama - Bölüm 7: otobüs şasesi kalite
+    kontrolü için çok robotlu (UR10e + Kawasaki) bakış noktası planlaması ve
+    muayenenin yürütülmesi. Tek bir ortak kaplama kümesi iki kola paylaştırılır.
+  </description>
+  <maintainer email="cshyilmaz@gmail.com">Cem Süha Yılmaz</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Kitap deposundaki paketler: geometri çekirdeği ve MoveIt 2 arayüzü -->
+  <exec_depend>ch07_viewpoint_planner</exec_depend>
+  <exec_depend>book_pymoveit2</exec_depend>
+
+  <!-- ROS 2 mesajları, servisler ve eylemler -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
+  <exec_depend>builtin_interfaces</exec_depend>
+  <exec_depend>control_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>moveit_msgs</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>sensor_msgs_py</exec_depend>
+  <exec_depend>shape_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>tf2_ros_py</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+
+  <!-- Başlatma dosyaları -->
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <!-- Python kütüphaneleri: nokta bulutu kaydı (open3d), görselleştirme, dönüşümler -->
+  <exec_depend>python3-matplotlib</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-open3d</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+  <exec_depend>python3-trimesh-pip</exec_depend>
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

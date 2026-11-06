@@ -7,18 +7,21 @@ Her bölümün kodu, bölüm numarasıyla başlayan bir klasördedir (`chNN_...`
 |---|---|---|
 | [`ch04_ros2_communication`](ch04_ros2_communication) | 4 — Gelişmiş ROS 2 İletişim Yapıları ve Araçlar | ROS 2 paketi: servis, eylem, parametre, başlatma dosyası, URDF/Xacro, TF2 |
 | [`ch05_simulation_visualization`](ch05_simulation_visualization) | 5 — Simülasyon ve Görselleştirme Ortamları | ROS 2 paketi: RViz2, Gazebo Harmonic, ros_gz köprüsü, ros2_control kipleri |
-| [`ch07_bus_inspection`](ch07_bus_inspection) | 7 — Otobüs Şasesinin Kalite Kontrolü İçin Hareket Planlama | Araştırma deposuna yönlendirme |
-| [`ch08_door_inspection`](ch08_door_inspection) | 8 — Doblo Kapısı Yüzey Kalite Kontrolü | Araştırma deposuna yönlendirme |
-| [`ch09_conveyor_pick_place`](ch09_conveyor_pick_place) | 9 — Konveyör Al-Yerleştir Otomasyonu | Araştırma deposuna yönlendirme |
-| [`ch10_screwdriving`](ch10_screwdriving) | 10 — İnsan–Robot İş Birlikli Hassas Vidalama | Araştırma deposuna yönlendirme |
+| [`ch07_bus_inspection`](ch07_bus_inspection) | 7 — Otobüs Şasesinin Kalite Kontrolü İçin Hareket Planlama | ROS 2 paketleri: `ch07_viewpoint_planner`, `ch07_multirobot_planner` |
+| [`ch08_door_inspection`](ch08_door_inspection) | 8 — Doblo Kapısı Yüzey Kalite Kontrolü | ROS 2 paketleri: `ch08_door_inspection`, `ch08_door_inspection_ui` |
+| [`ch09_conveyor_pick_place`](ch09_conveyor_pick_place) | 9 — Konveyör Al-Yerleştir Otomasyonu | ROS 2 paketi: `ch09_conveyor_pick_place` |
+| [`ch10_screwdriving`](ch10_screwdriving) | 10 — İnsan–Robot İş Birlikli Hassas Vidalama | ROS 2 paketi: `ch10_screwdriving` |
+| [`common`](common) | 7–10 | Ortak kütüphane: `book_pymoveit2` (MoveIt 2 Python arayüzü) |
 
 Bölüm 4 ve 5 kendi başına derlenip çalışan, donanım gerektirmeyen paketlerdir.
-Bölüm 7–10'daki uygulamalar ise gerçek bir robot hücresine (UR10e, Kawasaki RS005L,
-Festo doğrusal eksen, AGV, OnRobot ve VGC10 tutucular) ve onlarca sürücü paketine
-dayandığı için kodları
+Bölüm 7–10'da anlatılan kodlar da bu depodadır ve `rosdep` + `colcon build` ile
+derlenir. Ancak bu uygulamalar gerçek bir robot hücresinde (UR10e, Kawasaki RS005L,
+Festo doğrusal eksen, AGV, OnRobot ve VGC10 tutucular) ya da onun Gazebo ikizinde
+çalışır. Hücrenin robot tanımları (URDF ve mesh'ler), MoveIt 2 yapılandırmaları,
+Gazebo dünyası ve başlatma (bringup) paketleri
 [ESOGU-ASRLAB/ESOGU-HILTest-DualRobot](https://github.com/ESOGU-ASRLAB/ESOGU-HILTest-DualRobot)
-araştırma deposunda tutulur. Bu depodaki `ch07`–`ch10` klasörleri, bölümde anlatılan
-her adımın araştırma deposundaki karşılığını gösterir.
+araştırma deposundadır. Bu yüzden Bölüm 7–10'u **çalıştırmak** için o depodaki
+paketlere de ihtiyaç vardır (bkz. **Bölüm 7–10: araştırma deposunun eklenmesi**).
 
 ## Gereksinimler
 
@@ -53,17 +56,35 @@ $ ros2 run ch04_ros2_communication tcp_tf2_monitor
 
 ## Bölüm 7–10: araştırma deposunun eklenmesi
 
-Uygulama bölümlerinin kodunu aynı çalışma alanına çekmek için
-[`research.repos`](research.repos) dosyası kullanılır:
+Bölüm 7–10 paketleri robot hücresini kendileri başlatmaz; hücreyi (MoveIt 2,
+denetleyiciler, Gazebo ikizi ya da gerçek robotlar) araştırma deposundaki
+başlatma dosyası ayağa kaldırır. Araştırma deposunu aynı çalışma alanına çekmek
+için [`research.repos`](research.repos) dosyası kullanılır:
 
 ```bash
 $ cd ~/ros2_ws
 $ vcs import src < src/ROS2-Book/research.repos
 $ rosdep install --from-paths src --ignore-src -r -y
 $ colcon build --symlink-install
+$ source install/setup.bash
 ```
 
 `vcs` komutu yoksa: `$ sudo apt install python3-vcstool`
+
+Kitap paketlerinin adları `chNN_` ile başladığı için araştırma deposundaki
+paketlerle çakışmaz; iki depo aynı çalışma alanında birlikte derlenir.
+
+Robot hücresi, gerçek robot olmadan sahte donanımla (fake hardware) başlatılır;
+her bölümün README dosyası, bölüme özgü ek argümanları verir:
+
+```bash
+$ ros2 launch my_robot_cell_control hil_test_whole_unified.launch.py \
+    use_fake_hardware:=true use_mock_hardware:=true fake_sensor_commands:=true
+```
+
+Bölüm 7–10 düğümlerinin ürettiği dosyalar (planlar, nokta bulutları, yörünge
+önbellekleri, koşu kayıtları) kaynak klasörüne değil `~/ros2_book_output/chNN/`
+altına yazılır.
 
 ## Bölüm 5: Gazebo Harmonic kurulumu
 
@@ -132,11 +153,14 @@ Fortress paketlerinin önüne geçer; Fortress paketlerinin kaldırılması gere
   `ament_flake8` ve `ament_pep257` denetimlerinden geçer:
 
   ```bash
-  $ colcon test --packages-select ch04_ros2_communication ch05_simulation_visualization
+  $ colcon test --base-paths src/ROS2-Book
   $ colcon test-result --verbose
   ```
 
 - Tüm bağımlılıklar `package.xml` içinde tanımlıdır; `rosdep install` hepsini kurar.
+  Tek istisna, Bölüm 9'un kullandığı Gemini Python SDK'sıdır (`google-genai`):
+  rosdep'te anahtarı olmadığı için `pip` ile kurulur (bkz.
+  [Bölüm 9 README](ch09_conveyor_pick_place/README.md)).
 
 ## Lisans
 

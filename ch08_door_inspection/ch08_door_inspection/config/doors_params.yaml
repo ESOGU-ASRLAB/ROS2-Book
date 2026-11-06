@@ -1,0 +1,155 @@
+# ARABA KAPISI muayene işinin kaplama / tahsis parametreleri.
+#
+# İki iş karşılaştırılabilir kalsın diye bilerek şase koşusuyla aynı algılayıcı modeli
+# ve aday yoğunluğu kullanılır (ch07_multirobot_planner/config/multirobot_params.yaml);
+# yalnızca hedef geometri değişir. FARKLI olan her değer aşağıda sebebiyle belirtilmiştir.
+#
+# /** ile eşleştirilir; böylece dosya, başlatma dosyası düğüme hangi adı verirse versin uygulanır.
+/**:
+  ros__parameters:
+    # --- Kamera: şase işiyle aynı (iki kolda da aynı SICK var). ---
+    camera:
+      horizontal_fov_deg: 70.0
+      vertical_fov_deg: 60.0
+      fov_safety_margin_deg: 3.0
+      min_range_m: 0.2
+      max_range_m: 1.8
+      frame_rate_hz: 5.0
+      # EN KISA UZAKLIK 1.0 m (önce 0.6, ondan önce 0.3 idi). Adaylar
+      # `yüzey_noktası + normal * d` konumuna yerleştirilir; yani bu liste tam olarak
+      # uzaklık halkalarının kümesidir ve iki kol tarafından paylaşılır: tek bir aday
+      # kümesi üretilip paylaştırılır, eşitlenecek robot başına bir sürümü yoktur.
+      #
+      # İlk GERÇEK koşudan sonra artırıldı: OctoMap iki kapının alt kısmı neredeyse hiç
+      # taranmamış olarak geldi. Daha geriden bakmak her çekimin kapladığı alanı
+      # genişletir; böylece kapının ortasına yöneltilmiş bir bakış noktası alt kenarı da yakalar.
+      #
+      # Algılayıcı hâlâ iyi aralığının içindedir. Gerçek yakalamalarda ölçüldü
+      # (menzil bandı başına 20 komşulu düzlem artığı / komşu aralığı):
+      #   0.6-0.8 m  0.98 mm / 1.90 mm      1.4-1.8 m  0.98 mm / 4.42 mm
+      #   0.8-1.0 m  0.90 mm / 2.62 mm      1.8-2.5 m  1.94 mm / 5.94 mm
+      # Gürültü ~1.8 m'ye kadar düzdür, yalnızca yanal çözünürlük kötüleşir; bu yüzden
+      # aşağıdaki her halka düz gürültü bölgesindedir; 1.6 oradaki son halkadır; liste
+      # max_range_m'ye (1.8) uzanmak yerine bu yüzden orada durur.
+      #
+      # Liste, 1.0'ın altındaki ikisini atmak yerine DÖRT HALKA KALIR: her halka aday
+      # havuzunun dörtte biridir ve havuzu küçültmek, tahsis edici seçim yapmadan önce
+      # geometrik kaplama tavanını düşürür.
+      #
+      # NOT: şase işi 0.3'ü korur (multirobot_params.yaml): orada yakın halka, kameranın
+      # iç yüzlere ulaşmak için şase açıklıklarının İÇİNE girebilmesi için vardır.
+      # Kapılar içine uzanılacak bir şeyi olmayan açık panellerdir.
+      viewpoint_distances: [1.0, 1.2, 1.4, 1.6]
+      tilt_variations_deg: [-15.0, 0.0, 15.0]
+      max_incidence_angle_deg: 80.0
+
+    # %98; ilk gerçek koşudan sonra %99.2'den düşürüldü. Durma koşulu budur: açgözlü
+    # döngü, birikimli kaplama bunu geçtiği anda biter.
+    #
+    # Kawasaki 3 bakış noktasıyla sınırlandığında (aşağıda max_viewpoints_kawasaki)
+    # %99.2 zaten ulaşılamaz olmuştu: son planlanan tur %96.84'te bitti; eşik hiç
+    # tetiklenmedi ve koşuyu kuyruk kesici (min_new_points) bitirdi. %98 hâlâ o turun
+    # ulaştığının üstündedir; yani koşuyu bu sayının mı yoksa kuyruk kesicinin mi
+    # durduracağı, yukarıdaki daha geniş uzaklık halkalarının ne kadar geri
+    # kazandırdığına bağlıdır. Bir sonraki yeniden planlamadan sonra planlayıcının
+    # "Allocation done: coverage ..." satırına bakın.
+    #
+    # Turu daha erken bitirmek için daha da düşürün, bakış noktası eklemeye devam etmek
+    # için artırın; kol sınırı olmadan geometrik tavan 4959/4960 hedef (%100.0) ölçüldü.
+    coverage_threshold: 0.98
+
+    # Aday yoğunluğu: şase koşusuyla aynı ayarlar. Kapılar şasenin 31.97 m^2'sine karşı
+    # yalnızca 6.82 m^2'dir; dolayısıyla AYNI 5000 hedefle örnekleme burada ~5 kat daha
+    # yoğundur. Bu bilerek yapılmıştır: bir kapı kusuru küçüktür ve fazladan hedefler
+    # yalnızca kaplama matrisi süresine mal olur, onu da embree karşılar.
+    num_base_points: 400
+    target_sample_points: 5000
+
+    # Kuyruk kesiciler: kapılar için GEVŞETİLDİ (şase işi 8 / 0.005 ile çalışır).
+    # Etkin eşik max(min_new_points, min_marginal_coverage * hedefler)'dir ve şase
+    # değerleriyle bu, bakış noktası başına max(8, 4960'ın %0.5'i = 25) = 25 yeni
+    # noktaydı. 6.8 m^2'lik bir hedefte bu, turu kol başına 5 bakış noktasında kesti.
+    #
+    # Oransal kesici KAPATILDI ve mutlak kesici 5'e düşürüldü; yani bir bakış noktası
+    # 4960 hedeften 5'ini (%0.1) eklerse yerini hak eder.
+    #
+    # Bunlar artık birincil durdurucu değil YEDEKTİR: koşu normalde eşikte biter. Kapsam
+    # erişilebilirlik yüzünden eşiğin altında kalırsa sonuca yine bunlar karar verir;
+    # aksi hâlde neredeyse değersiz bakış noktalarından oluşan kontrolsüz bir kuyruk
+    # ortaya çıkardı. Turu kısaltmak için min_new_points'i artırın, uzatmak için düşürün.
+    min_new_points: 5
+    min_marginal_coverage: 0.0
+    # Hâlâ kontrolsüz kuyruğa karşı kesin koruma; koşu bunun çok altında durmalıdır.
+    max_viewpoints_per_robot: 30
+
+    # KAWASAKI 3 BAKIŞ NOKTASIYLA SINIRLI; yalnızca kapılar için. Şase işinin kol
+    # başına geçersiz kılması yoktur ve yukarıdaki ortak sınırı kullanır.
+    #
+    # Kollar paralel çalışır; koşunun süresi toplam değil ~max(süre_ur, süre_kawasaki)'dir.
+    # Eşit hızda olmaktan çok uzaklar: gerçek hücrede UR 8 durağının hepsini bitirdiğinde
+    # Kawasaki 6 durağının ancak ~1.5'unu tamamlamıştı. Yani önceki 8/6 paylaşım hiç de
+    # dengeli bir plan değildi; UR'nin çoğu zaman boşta durduğu, Kawasaki'nin hızını
+    # belirlediği bir koşuydu. Koşuyu kısaltan yavaş kolu sınırlamaktır;
+    # max_viewpoints_per_robot'u düşürmek bunu ifade edemezdi, çünkü ikisini de kısar.
+    #
+    # UR'de 0 = geçersiz kılma yok; böylece Kawasaki'nin bıraktığı iş UR'ye düşer ve onun
+    # sayısı 8'i aşar. İstenen takas budur: hızlı kolda daha çok durak.
+    max_viewpoints_ur: 0
+    max_viewpoints_kawasaki: 3
+
+    # false -> sabit kol önceliği, önce UR (şase işi true kullanır).
+    #
+    # 3'lük sınırı işe yarar kılan budur. Dengeleme açıkken en az yüklü kol kazanır;
+    # Kawasaki 3 durağını en erken, en yüksek kazançlı adaylara (UR'nin zaten
+    # alabileceklerine) harcar ve yalnızca ONUN ulaşabildiği bir yüz geldiğinde sınırını
+    # doldurmuş olur, o yüz de atılır. Önce-UR önceliğiyle Kawasaki yalnızca UR'nin
+    # ulaşamadığı adayları alır; böylece 3 durağı yerine başkası konamayacak yerlere
+    # gider ve kaplama maliyeti en azda kalır.
+    balance_load: false
+
+    # Ziyaret sırası. İki kapı Y boyunca dizilidir (windowlessdoor y 0.088..1.319,
+    # windowdoor y 1.301..2.478); bu yüzden max_y / min_y çapaları iki kolu tek bir kapıya
+    # yığmak yerine çiftin zıt uçlarına göndermeye devam eder.
+    order_by_proximity: true
+    ur_order_anchor: "max_y"
+    kawasaki_order_anchor: "min_y"
+
+    # Yol eniyileme: şase işinde doğrulanmış ayarların aynısı.
+    unwind_joint_goals: true
+    wrap_limit_margin: 0.05
+    wrap_min_gain: 0.35
+    rechain_ik: true
+    rechain_ik_attempts: 4
+    rechain_rail_probe: 0.25
+    rechain_rail_weight: 2.0
+    rechain_yaw_probe: true
+    rechain_yaw_joint: "joint1"
+    rechain_rail_joint: "world_to_agv"
+
+    ik_avoid_collisions: true
+
+    # --- UR10e ---
+    ur_group_name: "real_ur10e"
+    ur_base_frame: "world"
+    ur_tool_frame: "ur10e_depth_optical_frame"
+
+    # Yalnızca UR için yasak kutusu, şase işinden değişmedi: UR'nin kendi doğrusal
+    # rayının ARKASINDAKİ kamera pozlarını reddeder (ray world X=-0.158'de; -0.20 üst
+    # sınırı ~4 cm bırakır); yalnızca ağı kullanan örtülme modeli bunu göremez.
+    #
+    # Kapıya özgü bir ayar GEREKMEZ. Kapılar iki kolun arasında, x -1.21..-0.79'da durur:
+    # +X yüzleri UR'ye, -X yüzleri Kawasaki'ye (AGV rayı x ~ -2.2'de) bakar. Tahsis edici
+    # her yüzü gerçekten ulaşabilen kola verir; böylece iki taraf elle yazılmış bir
+    # kuralla değil geometriyle iki kola bölünür.
+    ur_workspace_filter_enabled: true
+    ur_workspace_bounds_min: [-100.0, -100.0, 0.20]
+    ur_workspace_bounds_max: [-0.20, 100.0, 100.0]
+
+    # --- Kawasaki: IK, sabit kamera->uç dönüşümü uygulanarak grup ucu (link6) için
+    #     çözülür. Şase işiyle aynı. ---
+    kawasaki_group_name: "real_kawasaki"
+    kawasaki_base_frame: "world"
+    kawasaki_camera_frame: "camera_rgb_optic_frame"
+    kawasaki_group_tip: "link6"
+    kawasaki_ik_via_tip: true
+    kawasaki_view_axis_correction_rpy: [-1.5707963, -1.5707963, 0.0]

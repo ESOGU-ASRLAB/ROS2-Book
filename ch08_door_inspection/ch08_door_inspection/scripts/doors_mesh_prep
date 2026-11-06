@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""
+Birleştirilmiş kapı ağı oluşturucusunun komut satırı giriş noktası.
+
+Paket Python ve C++ birlikte (ament_cmake + ament_cmake_python) olduğu için
+ament_cmake setup.py giriş noktalarını yok sayar; bu yüzden bu küçük betik
+lib/ch08_door_inspection altına kurulur ve `ros2 run` onu bulur.
+"""
+import sys
+
+from ch08_door_inspection.merge_door_meshes import main
+
+if __name__ == '__main__':
+    sys.exit(main())

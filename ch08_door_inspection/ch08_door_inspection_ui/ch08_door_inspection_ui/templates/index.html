@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Doors — Multirobot Sensing / Cleaning Dashboard for real-time monitoring and control">
+    <title>Doors — Multirobot Sensing / Cleaning</title>
+
+    <!-- Stil dosyaları -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- ===== ÜST BAŞLIK ===== -->
+    <header class="header fade-in">
+        <div class="header-center">
+            <h1>Sensing-Cleaning Robot</h1>
+            <p>Doors Inspection — Real-Time Control Dashboard</p>
+        </div>
+    </header>
+
+    <!-- ===== DENETİM ÇUBUĞU (START / STOP / anahtarlar) ===== -->
+    <nav class="control-bar fade-in" id="control-bar">
+        <button class="action-btn start-btn" id="btn-start-hil" onclick="startHIL()">
+            <span class="btn-icon">🚀</span>
+            START SYSTEM
+        </button>
+
+        <button class="emergency-btn" id="btn-emergency" onclick="emergencyStop()">
+            🛑 STOP SYSTEM
+        </button>
+
+        <div class="control-separator"></div>
+
+        <div class="toggle-container" title="Enable this switch when not connected to real hardware">
+            <label class="toggle-switch">
+                <input type="checkbox" id="fake-hardware-toggle">
+                <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Use Fake Hardware</span>
+        </div>
+
+        <!-- Kapı işine özgü. CONFIRM görev başlatmasını çalıştırdığında okunur; böylece
+             HIL sistemi ayağa kalktıktan sonra da değiştirilebilir. -->
+        <div class="toggle-container" title="Off: capture the real SICKs too. On: only the two Gazebo cameras. Forced on by Use Fake Hardware, where there are no real cameras.">
+            <label class="toggle-switch">
+                <input type="checkbox" id="only-sim-toggle" checked>
+                <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Sim Cameras Only</span>
+        </div>
+
+        <div class="toggle-container" title="Ignore the cached trajectories and plan again. Needed for one run after any change to the collision model — cached paths are replayed WITHOUT re-checking collision.">
+            <label class="toggle-switch">
+                <input type="checkbox" id="force-replan-toggle">
+                <span class="slider"></span>
+            </label>
+            <span class="toggle-label">Force Replan</span>
+        </div>
+    </nav>
+
+    <!-- ===== "ROBOT HAZIR" ONAY ŞERİDİ ===== -->
+    <div class="confirm-banner" id="confirm-banner">
+        <span class="banner-icon">⚠️</span>
+        <span class="banner-text">Robots initialized. Please confirm that robots are ready!</span>
+        <button class="confirm-btn" id="btn-confirm-robot" onclick="confirmRobot()">
+            ✅ Robots are Ready — Start Mission
+        </button>
+    </div>
+
+    <!-- ===== BİLGİ ÇUBUĞU (güncel kip + kusur sayısı) ===== -->
+    <div class="info-bar fade-in" id="info-bar">
+        <div class="info-item mode-item">
+            <span class="info-icon">🤖</span>
+            <span class="info-label">Current Mode:</span>
+            <span class="info-value" id="current-mode">IDLE</span>
+        </div>
+        <div class="info-item defect-item">
+            <span class="info-icon">🔍</span>
+            <span class="info-label">Defects Detected:</span>
+            <span class="info-value defect-value" id="defect-count">0</span>
+        </div>
+    </div>
+
+    <!-- ===== KOMUT DÜĞMELERİ (algılama / temizleme / durdur / yeniden muayene) ===== -->
+    <div class="command-bar fade-in" id="command-bar">
+        <button class="cmd-btn cmd-start" id="btn-cmd-start" onclick="publishCmd('START')">
+            <span class="btn-icon">▶️</span>
+            START SENSING ROBOT
+        </button>
+        <button class="cmd-btn cmd-confirm" id="btn-cmd-confirm" onclick="publishCmd('CONFIRM')">
+            <span class="btn-icon">✅</span>
+            CONFIRM DEFECTS AND START CLEANING ROBOT
+        </button>
+        <button class="cmd-btn cmd-reinspect" id="btn-cmd-reinspect" onclick="publishCmd('REINSPECT')">
+            <span class="btn-icon">🔄</span>
+            REINSPECT
+        </button>
+        <button class="cmd-btn cmd-stop" id="btn-cmd-stop" onclick="publishCmd('STOP')">
+            <span class="btn-icon">⏹️</span>
+            STOP
+        </button>
+    </div>
+
+    <!-- ===== KUSUR TABLOSU ===== -->
+    <div class="panel defect-panel fade-in">
+        <div class="panel-header">
+            <h3>🩹 Detected Defects</h3>
+            <span class="panel-badge" id="defect-frame-badge">frame: world · metre</span>
+        </div>
+        <div class="defect-table-wrapper">
+            <table class="defect-table">
+                <thead>
+                    <tr>
+                        <th>Defect ID</th>
+                        <th>Type</th>
+                        <th>X (m)</th>
+                        <th>Y (m)</th>
+                        <th>Z (m)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="defect-tbody">
+                    <tr class="defect-empty-row">
+                        <td colspan="6">No defects reported yet. Run Sensing Start.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===== KAMERA AKIŞLARI (yan yana) ===== -->
+    <div class="camera-grid">
+        <!-- Gerçek dünya (sol) -->
+        <div class="panel fade-in">
+            <div class="panel-header">
+                <h3>🎥 Real World Camera</h3>
+                <span class="panel-badge live">● LIVE</span>
+            </div>
+            <div class="camera-container" id="real-camera-wrapper">
+                <img src="/stream/real" alt="Real World Camera" id="real-camera"
+                     onerror="this.style.display='none'; document.getElementById('real-placeholder').style.display='flex';">
+                <div class="camera-placeholder" id="real-placeholder" style="display:none;">
+                    <span class="placeholder-icon">📷</span>
+                    <span class="placeholder-text">Waiting for camera connection...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gazebo ikizi (sağ) -->
+        <div class="panel fade-in">
+            <div class="panel-header">
+                <h3>🎮 Gazebo Simulation Camera</h3>
+                <span class="panel-badge sim">● SIM</span>
+            </div>
+            <div class="camera-container" id="gazebo-camera-wrapper">
+                <img src="/stream/gazebo" alt="Gazebo Simulation Camera" id="gazebo-camera"
+                     onerror="this.style.display='none'; document.getElementById('gazebo-placeholder').style.display='flex';">
+                <div class="camera-placeholder" id="gazebo-placeholder" style="display:none;">
+                    <span class="placeholder-icon">🎮</span>
+                    <span class="placeholder-text">Waiting for simulation stream...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== GRAFİKLER (3 sütun) ===== -->
+    <div class="chart-grid">
+        <!-- Gerçek hücrenin eklem konumları. Yanındaki benzetim grafiğiyle eşleşir: aynı
+             eklemler, aynı renkler, aynı çizgi biçimleri; böylece HIL koşusundaki
+             gerçek/benzetim ayrışması doğrudan iki grafikten okunur. -->
+        <div class="panel fade-in">
+            <div class="panel-header">
+                <h3>📊 Real World Joint Positions</h3>
+                <span class="panel-badge live">● LIVE</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="position-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Gazebo ikizi, /sim/joint_states'ten. Gerçek grafikle aynı ortak eklem
+             adları -- arka uç sim_ ön eklerini atar. -->
+        <div class="panel fade-in">
+            <div class="panel-header">
+                <h3>📊 Sim World Joint Positions</h3>
+                <span class="panel-badge sim">● SIM</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="sim-position-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Temizleme kuvveti grafiği -->
+        <div class="panel fade-in">
+            <div class="panel-header">
+                <h3>📊 Cleaning Force</h3>
+                <span class="panel-badge live">● LIVE</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="force-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== GÜNLÜK PANELİ ===== -->
+    <div class="panel log-section fade-in">
+        <div class="panel-header">
+            <h3>📋 System Logs</h3>
+            <div class="log-controls">
+                <button class="log-control-btn" onclick="toggleAutoScroll()">
+                    ⬇️ Auto-Scroll: <span id="autoscroll-label">ON</span>
+                </button>
+                <button class="log-control-btn" onclick="clearLogs()">
+                    🗑️ Clear
+                </button>
+            </div>
+        </div>
+        <div class="log-container" id="log-container">
+            <div class="log-entry">
+                <span class="log-time">--:--:--</span>
+                <span class="log-source system">SYSTEM</span>
+                <span class="log-msg">Dashboard started. Ready to operate.</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== "ALGILAMA TAMAMLANDI" PENCERESİ ===== -->
+<div class="notice-overlay" id="notice-overlay" role="dialog" aria-modal="true"
+     aria-labelledby="notice-title" aria-describedby="notice-detail">
+    <div class="notice-modal">
+        <div class="notice-modal-icon">✅</div>
+        <div class="notice-modal-title" id="notice-title">SENSING COMPLETE</div>
+        <div class="notice-modal-detail" id="notice-detail">—</div>
+        <div class="notice-modal-time" id="notice-time"></div>
+        <button class="notice-modal-btn" id="btn-notice-ok" onclick="ackNotice()">OK</button>
+    </div>
+</div>
+
+<!-- ===== "TEMİZLEME TAMAMLANDI" PENCERESİ ===== -->
+<div class="notice-overlay" id="cleaning-overlay" role="dialog" aria-modal="true"
+     aria-labelledby="cleaning-title" aria-describedby="cleaning-detail">
+    <div class="notice-modal">
+        <div class="notice-modal-icon">🧹</div>
+        <div class="notice-modal-title" id="cleaning-title">CLEANING COMPLETE</div>
+        <div class="notice-modal-detail" id="cleaning-detail">—</div>
+        <div class="notice-modal-time" id="cleaning-time"></div>
+        <button class="notice-modal-btn" id="btn-cleaning-ok" onclick="ackCleaning()">OK</button>
+    </div>
+</div>
+
+<!-- ===== JavaScript ===== -->
+<script src="/static/js/dashboard.js"></script>
+
+</body>
+</html>

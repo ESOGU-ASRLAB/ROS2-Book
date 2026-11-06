@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ch08_door_inspection</name>
+  <version>1.0.0</version>
+  <description>
+    ROS 2 ile Endüstriyel Robot Programlama - Bölüm 8: iki araç kapısının
+    (windowdoor / windowlessdoor) UR10e + Kawasaki ile iş birlikli kaplama
+    muayenesi. Bölüm 7'nin planlayıcısı değiştirilmeden yeniden kullanılır;
+    yeni adımlar iki kapı ağının birleştirilmesi, inanç/doluluk OctoMap'inin
+    oluşturulması ve operatör paneliyle sürülen algılama + temizleme görevidir.
+  </description>
+  <maintainer email="cshyilmaz@gmail.com">Cem Süha Yılmaz</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Karma paket: OctoMap oluşturucusu için ament_cmake, Python modülü için
+       ament_cmake_python -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <!-- OctoMap aşaması (sistem paketleri, rosdep ile kurulur) -->
+  <depend>libpcl-all-dev</depend>
+  <depend>liboctomap-dev</depend>
+  <depend>eigen</depend>
+
+  <!-- Kitap deposundaki paketler: planlayıcı ve yürütücüler olduğu gibi çalıştırılır,
+       senaryo kusurları ve MoveIt 2 arayüzü book_pymoveit2'den gelir -->
+  <exec_depend>ch07_multirobot_planner</exec_depend>
+  <exec_depend>ch07_viewpoint_planner</exec_depend>
+  <exec_depend>book_pymoveit2</exec_depend>
+
+  <!-- ROS 2 istemci kütüphanesi, mesajlar ve servisler -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+
+  <!-- Başlatma dosyaları -->
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <!-- Python kütüphaneleri: ağ birleştirme ve inanç haritası parçaları -->
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-trimesh-pip</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

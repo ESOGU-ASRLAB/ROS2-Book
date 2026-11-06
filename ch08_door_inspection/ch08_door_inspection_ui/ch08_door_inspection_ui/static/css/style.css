@@ -1,0 +1,1035 @@
+/* ==============================================================================
+   Kapı görevi — algılama / temizleme robot paneli
+   Koyu tema CSS
+   ============================================================================== */
+
+/* ---------- Google yazı tipleri ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ---------- CSS özel özellikleri ---------- */
+:root {
+    /* Renk paleti — camgöbeği vurgu */
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #111827;
+    --bg-card: #1a2035;
+    --bg-card-hover: #1f2847;
+    --bg-input: #0d1225;
+
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-accent: rgba(6, 182, 212, 0.3);
+
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    /* Vurgu renkleri */
+    --accent-teal: #14b8a6;
+    --accent-teal-light: #2dd4bf;
+    --accent-cyan: #06b6d4;
+    --accent-blue: #6366f1;
+    --accent-blue-light: #818cf8;
+    --accent-green: #10b981;
+    --accent-yellow: #f59e0b;
+    --accent-orange: #f97316;
+    --accent-red: #ef4444;
+    --accent-red-dark: #dc2626;
+    --accent-purple: #a855f7;
+
+    /* Geçişli renkler */
+    --gradient-primary: linear-gradient(135deg, #14b8a6, #06b6d4);
+    --gradient-success: linear-gradient(135deg, #10b981, #06b6d4);
+    --gradient-danger: linear-gradient(135deg, #ef4444, #f97316);
+    --gradient-card: linear-gradient(145deg, #1a2035 0%, #151c30 100%);
+    --gradient-command: linear-gradient(135deg, #6366f1, #8b5cf6);
+
+    /* Gölgeler */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.5);
+    --shadow-glow-teal: 0 0 20px rgba(20, 184, 166, 0.15);
+    --shadow-glow-green: 0 0 20px rgba(16, 185, 129, 0.15);
+    --shadow-glow-red: 0 0 20px rgba(239, 68, 68, 0.2);
+    --shadow-glow-blue: 0 0 20px rgba(99, 102, 241, 0.15);
+
+    /* Boşluklar */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+
+    /* Geçişler */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------- Sıfırlama ve temel ---------- */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    /* Taban punto: rem tabanlı ölçekler bundan türer, artırınca tüm yazılar büyür. */
+    font-size: 16.5px;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+/* Hafif hareketli arka plan geçişi */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background:
+        radial-gradient(ellipse at 20% 0%, rgba(20, 184, 166, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(6, 182, 212, 0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ---------- Kaydırma çubuğu ---------- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* ---------- Yerleşim kabı ---------- */
+.dashboard {
+    position: relative;
+    z-index: 1;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ========== ÜST BAŞLIK ========== */
+.header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--gradient-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 22px 28px;
+    box-shadow: var(--shadow-md);
+}
+
+.header-center {
+    text-align: center;
+}
+
+.header-center h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+}
+
+.header-center p {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ========== DENETİM ÇUBUĞU ========== */
+.control-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--gradient-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 14px 20px;
+    box-shadow: var(--shadow-md);
+    flex-wrap: wrap;
+}
+
+/* START düğmesi */
+.action-btn {
+    padding: 12px 32px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.start-btn {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.start-btn:hover {
+    background: var(--accent-green);
+    color: white;
+    box-shadow: var(--shadow-glow-green);
+    transform: translateY(-2px);
+}
+
+.start-btn:active {
+    transform: translateY(0);
+}
+
+.start-btn .btn-icon {
+    margin-right: 6px;
+}
+
+/* Ayırıcı */
+.control-separator {
+    width: 1px;
+    height: 48px;
+    background: var(--border-subtle);
+    flex-shrink: 0;
+}
+
+/* ========== AÇMA/KAPAMA ANAHTARI ========== */
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Otomatik kenar boşluğunu yalnızca ayırıcıdan sonraki İLK anahtar alır. Üç
+   anahtarın her birinde otomatik boşluk olsaydı boşluk aralarına dağıtılır ve
+   grup çubuğa saçılırdı. */
+.control-separator + .toggle-container {
+    margin-left: auto;
+}
+
+.toggle-label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    transition: .3s;
+    border-radius: 24px;
+}
+
+.toggle-switch .slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--text-muted);
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .slider {
+    background-color: rgba(20, 184, 166, 0.3);
+    border-color: var(--accent-teal);
+}
+
+.toggle-switch input:checked + .slider:before {
+    transform: translateX(20px);
+    background-color: var(--accent-teal-light);
+}
+
+/* Acil durdurma */
+.emergency-btn {
+    padding: 12px 24px;
+    border: 2px solid var(--accent-red);
+    border-radius: var(--radius-md);
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--accent-red);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    min-width: 120px;
+    text-align: center;
+}
+
+.emergency-btn:hover {
+    background: var(--accent-red);
+    color: white;
+    box-shadow: var(--shadow-glow-red);
+    transform: scale(1.03);
+}
+
+.emergency-btn:active {
+    transform: scale(0.98);
+}
+
+/* ========== BİLGİ ÇUBUĞU ========== */
+.info-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--gradient-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px 24px;
+    flex-wrap: wrap;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.info-icon {
+    font-size: 1.3rem;
+}
+
+.info-label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.info-value {
+    color: var(--accent-teal-light);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.defect-value {
+    color: var(--accent-orange);
+    font-size: 1.2rem;
+    background: rgba(249, 115, 22, 0.1);
+    padding: 2px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(249, 115, 22, 0.2);
+}
+
+.mode-item {
+    border-right: 1px solid var(--border-subtle);
+    padding-right: 20px;
+}
+
+/* ========== KOMUT DÜĞMELERİ ÇUBUĞU ========== */
+.command-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--gradient-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 14px 20px;
+    box-shadow: var(--shadow-md);
+}
+
+.cmd-btn {
+    flex: 1;
+    padding: 14px 20px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.cmd-btn .btn-icon {
+    display: block;
+    font-size: 1.3rem;
+    margin-bottom: 4px;
+}
+
+.cmd-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.cmd-start {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+.cmd-start::before {
+    background: var(--gradient-success);
+}
+.cmd-start:hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-green);
+}
+.cmd-start:hover::before {
+    opacity: 0.1;
+}
+
+.cmd-confirm {
+    border-color: rgba(20, 184, 166, 0.3);
+}
+.cmd-confirm::before {
+    background: var(--gradient-primary);
+}
+.cmd-confirm:hover {
+    border-color: var(--accent-teal);
+    color: var(--accent-teal-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-teal);
+}
+.cmd-confirm:hover::before {
+    opacity: 0.1;
+}
+
+.cmd-stop {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+.cmd-stop::before {
+    background: var(--gradient-danger);
+}
+.cmd-stop:hover {
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.25);
+}
+.cmd-stop:hover::before {
+    opacity: 0.1;
+}
+
+.cmd-reinspect {
+    border-color: rgba(99, 102, 241, 0.3);
+}
+.cmd-reinspect::before {
+    background: var(--gradient-command);
+}
+.cmd-reinspect:hover {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-blue);
+}
+.cmd-reinspect:hover::before {
+    opacity: 0.1;
+}
+
+.cmd-btn:active {
+    transform: translateY(0);
+}
+
+/* Komut gönderildi geri bildirimi */
+@keyframes cmdSentFlash {
+    0%   { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55); }
+    100% { box-shadow: 0 0 0 14px rgba(255, 255, 255, 0); }
+}
+
+.cmd-btn.cmd-sent {
+    animation: cmdSentFlash 0.5s ease-out;
+    border-color: rgba(255, 255, 255, 0.6);
+    color: var(--text-primary);
+}
+
+/* ========== PANEL (kart) ========== */
+.panel {
+    background: var(--gradient-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    transition: border-color var(--transition-normal);
+}
+
+.panel:hover {
+    border-color: var(--border-accent);
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.panel-header h3 {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.panel-header .panel-badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.panel-badge.live {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.panel-badge.sim {
+    background: rgba(86, 128, 230, 0.15);
+    color: #7ea0ee;
+    border: 1px solid rgba(86, 128, 230, 0.3);
+}
+
+/* Kamera panelleri: gerçek dünya ve Gazebo ikizi yan yana */
+.camera-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.camera-panel {
+    width: 100%;
+}
+
+.camera-container {
+    position: relative;
+    width: 100%;
+    /* %56.25 = 16:9. Panel eskiden tam genişlikte ve basık bir %42 oranındaydı; yarım
+       genişlikte her akışın doğal en-boy oranına ihtiyacı var, yoksa görüntü
+       kenarlarda bantlanır. */
+    padding-top: 56.25%;
+    background: var(--bg-input);
+    overflow: hidden;
+}
+
+.camera-container img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.camera-placeholder {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-muted);
+}
+
+.camera-placeholder .placeholder-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+}
+
+.camera-placeholder .placeholder-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* ========== GRAFİK IZGARASI (3 sütun) ========== */
+.chart-grid {
+    display: grid;
+    /* Artık üç eşit sütun değil: iki eklem grafiği 14'er seri, kuvvet grafiği tek seri
+       taşıyor; alan her birinin gerçekte göstermesi gereken miktara göre bölünür. */
+    grid-template-columns: 1.2fr 1.2fr 0.75fr;
+    gap: 16px;
+}
+
+.chart-container {
+    padding: 12px 16px 8px;
+    /* 280 değil 340: eklem grafikleri 14 seri (UR + Kawasaki) taşır ve alttaki
+       gösterge üç satıra ihtiyaç duyar. Kuvvet grafiği tek seridir ve yalnızca
+       daha uzun bir çizim alanı alır. */
+    height: 340px;
+    position: relative;
+}
+
+.chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ========== GÜNLÜK PANELİ ========== */
+.log-section {
+    width: 100%;
+}
+
+.log-container {
+    height: 180px;
+    overflow-y: auto;
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.65;
+    background: var(--bg-input);
+}
+
+.log-entry {
+    display: flex;
+    gap: 8px;
+    padding: 1px 0;
+    animation: logFadeIn 0.2s ease-out;
+}
+
+@keyframes logFadeIn {
+    from { opacity: 0; transform: translateX(-4px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.log-time {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.log-source {
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 65px;
+}
+
+.log-source.system { color: var(--accent-teal-light); }
+.log-source.hil { color: var(--accent-cyan); }
+.log-source.mission { color: var(--accent-purple); }
+
+/* Pencere giriş animasyonları. "Algılama tamamlandı" ve "temizleme tamamlandı"
+   pencerelerince paylaşılır. HARMONY panelinde KPI3 arıza penceresi bloğundaydılar;
+   o blok burada yok, bu yüzden ayrı tanımlandılar ve adlarından "fault" çıkarıldı. */
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalPopIn {
+    from { opacity: 0; transform: scale(0.9) translateY(-12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ========== KUSUR TABLOSU ========== */
+.defect-table-wrapper {
+    overflow-x: auto;
+    padding: 4px 0;
+}
+
+.defect-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.defect-table thead th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+}
+
+.defect-table tbody td {
+    padding: 11px 14px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    white-space: nowrap;
+}
+
+.defect-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.defect-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.defect-table .defect-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.defect-table .defect-num {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    color: var(--text-primary);
+}
+
+.defect-empty-row td {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 22px 14px;
+}
+
+.defect-status {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.defect-status.status-detected {
+    background: rgba(239, 68, 68, 0.14);
+    color: var(--accent-red);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.defect-status.status-cleaning {
+    background: rgba(245, 158, 11, 0.14);
+    color: var(--accent-yellow);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.defect-status.status-cleaned {
+    background: rgba(16, 185, 129, 0.14);
+    color: var(--accent-green);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.defect-status.status-failed {
+    background: rgba(168, 85, 247, 0.16);
+    color: var(--accent-purple);
+    border: 1px solid rgba(168, 85, 247, 0.45);
+}
+
+/* ========== "ALGILAMA TAMAMLANDI" PENCERESİ ========== */
+.notice-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(5, 8, 16, 0.78);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    animation: modalFadeIn 0.18s ease-out;
+}
+
+.notice-overlay.visible {
+    display: flex;
+}
+
+.notice-modal {
+    width: min(560px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    text-align: center;
+    padding: 40px 44px 36px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(145deg, #10241f 0%, #101c26 100%);
+    border: 2px solid var(--accent-green);
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.22),
+                0 24px 70px rgba(0, 0, 0, 0.6),
+                0 0 80px rgba(16, 185, 129, 0.22);
+    animation: modalPopIn 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.notice-modal-icon {
+    font-size: 3.6rem;
+    line-height: 1;
+    margin-bottom: 16px;
+}
+
+.notice-modal-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-green);
+    margin-bottom: 16px;
+}
+
+.notice-modal-detail {
+    font-size: 1.08rem;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.notice-modal-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 26px;
+}
+
+.notice-modal-btn {
+    min-width: 190px;
+    padding: 14px 44px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--gradient-success);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.08rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 6px 22px rgba(16, 185, 129, 0.35);
+}
+
+.notice-modal-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 32px rgba(16, 185, 129, 0.5);
+}
+
+.notice-modal-btn:active {
+    transform: translateY(0);
+}
+
+.notice-modal-btn:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.7);
+    outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+    .notice-modal { padding: 30px 22px 26px; }
+    .notice-modal-icon { font-size: 3rem; }
+    .notice-modal-title { font-size: 1.25rem; }
+    .notice-modal-btn { width: 100%; min-width: 0; }
+}
+
+/* ========== ONAY ŞERİDİ ========== */
+.confirm-banner {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-md);
+    padding: 14px 24px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.confirm-banner.visible {
+    display: flex;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.confirm-banner .banner-icon {
+    font-size: 1.4rem;
+}
+
+.confirm-banner .banner-text {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--accent-yellow);
+}
+
+.confirm-btn {
+    padding: 8px 24px;
+    border: 1px solid var(--accent-green);
+    border-radius: var(--radius-sm);
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-green);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.confirm-btn:hover {
+    background: var(--accent-green);
+    color: white;
+    box-shadow: var(--shadow-glow-green);
+}
+
+.log-msg {
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.log-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.log-control-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.log-control-btn:hover {
+    border-color: var(--accent-teal);
+    color: var(--text-primary);
+}
+
+/* ========== DUYARLI YERLEŞİM ========== */
+@media (max-width: 1200px) {
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+    /* İki kamera akışı yan yana bu genişliğin altında okunamaz hâle gelir. */
+    .camera-grid {
+        grid-template-columns: 1fr;
+    }
+    .header {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+    .header-center {
+        text-align: center;
+    }
+    .control-bar {
+        flex-direction: column;
+    }
+    .control-separator {
+        width: 100%;
+        height: 1px;
+    }
+    .info-bar {
+        flex-direction: column;
+    }
+    .mode-item {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+        padding-right: 0;
+        padding-bottom: 12px;
+    }
+    .command-bar {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 900px) and (min-width: 601px) {
+    .chart-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ========== YARDIMCI ANİMASYONLAR ========== */
+.fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* Grafik göstergesinin özel biçimi */
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 16px 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background var(--transition-fast);
+}
+
+.legend-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.legend-color {
+    width: 10px;
+    height: 3px;
+    border-radius: 2px;
+}

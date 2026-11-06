@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ch09_conveyor_pick_place</name>
+  <version>1.0.0</version>
+  <description>
+    ROS 2 ile Endüstriyel Robot Programlama - Bölüm 9: Gemini Robotics ER 2
+    (embodied reasoning) ile UR10e bilek kamerası arasında köprü. ER 2 derinlik
+    görüntüsünden 2D nokta üretir; düğümler noktayı nokta bulutuyla 3D'ye ve
+    world çerçevesine taşır, MoveIt 2 üzerinden konveyörden al-bırak yaptırır.
+  </description>
+  <maintainer email="cshyilmaz@gmail.com">Cem Süha Yılmaz</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Kitap deposundaki MoveIt 2 arayüzü -->
+  <exec_depend>book_pymoveit2</exec_depend>
+
+  <!-- ROS 2 istemci kütüphanesi, mesajlar, servisler ve TF -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>builtin_interfaces</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>moveit_msgs</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>tf2_ros_py</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+
+  <!-- Başlatma dosyaları -->
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <!-- Python kütüphaneleri: görüntü işleme ve sayısal hesap -->
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+
+  <!-- Bilerek EKLENMEYENLER:
+       * vgc10_msgs: yalnızca gerçek OnRobot VGC10 sürücüsüyle gelir. Gazebo'da
+         kavrama DetachableJoint ile yapılır; paket yoksa vacuum.py ve
+         recorder_node.py donanım konularını atlar.
+       * google-genai (Gemini SDK): rosdep anahtarı yoktur, pip ile kurulur
+         (bkz. README). -->
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>python3-yaml</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ch10_screwdriving</name>
+  <version>1.0.0</version>
+  <description>
+    ROS 2 ile Endüstriyel Robot Programlama - Bölüm 10: insan-robot iş birlikli
+    hassas vidalama senaryosu (UR10e, MoveIt 2, UR dijital giriş/çıkış).
+  </description>
+  <maintainer email="cshyilmaz@gmail.com">Cem Süha Yılmaz</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Senaryo düğümü -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>book_pymoveit2</exec_depend>
+  <exec_depend>builtin_interfaces</exec_depend>
+  <exec_depend>control_msgs</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
+  <!-- UR denetleyicisinin dijital giriş/çıkış mesajları (SetIO, IOStates) -->
+  <exec_depend>ur_msgs</exec_depend>
+
+  <!-- Başlatma dosyası -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

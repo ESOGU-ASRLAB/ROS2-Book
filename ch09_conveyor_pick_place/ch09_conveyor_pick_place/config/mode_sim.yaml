@@ -1,0 +1,48 @@
+# mode:=sim  --  Gazebo Harmonic simülasyonu
+#
+# gemini_params.yaml'ın ÜSTÜNE biner. Burada YALNIZCA sim ile gerçek arasında
+# gerçekten farklı olan şeyler bulunur; başka hiçbir ayar buraya konmamalı,
+# yoksa iki dosya birbirinden kayar ve "sim'de çalışıyor gerçekte çalışmıyor"
+# hatalarının kaynağı olur.
+#
+# Kullanım:
+#     ros2 launch ch09_conveyor_pick_place gemini_pick_place.launch.py
+#     (mode varsayılanı zaten sim)
+/**:
+  ros__parameters:
+
+    # Köprü topic'leri (my_robot_cell_gz/bridge/bridgos.yaml, /sim namespace).
+    # depth/image 32FC1 ve METRE cinsinden gelir; depth_to_metres bunu bilir.
+    image_topic: "/sim/image"
+    cloud_topic: "/sim/pointcloud"
+    depth_topic: "/sim/depth/image"
+    camera_info_topic: "/sim/camera_info"
+    # Gazebo rgbd_camera IR genliği üretmez; bu topic sim'de BOŞ kalır ve
+    # render_mode "intensity" sim'de kullanılamaz.
+    intensity_topic: "/intensity"
+
+    # Gazebo /clock yayınlıyor (bridgos.yaml onu /world/cem/clock'tan alır).
+    use_sim_time: true
+
+    # SİMÜLASYONDA VGC10 SÜRÜCÜSÜ YOKTUR. Kavrama, Gazebo'daki DetachableJoint
+    # ile yapılır (/vacuum/attach); Modbus'tan gelen ölçülen vakum diye bir şey
+    # yoktur, yani /OnRobotVGInput hiç yayınlanmaz.
+    #
+    # true kalırsa HER KAVRAMA BAŞARISIZ SAYILIR: grip() 3 sn bekler, durum
+    # mesajı gelmez, "Vakum kurulamadı (parça tutulmadı)" ile görev düşer.
+    # Sinsi olan şu: attach ZATEN gönderilmiştir, yani kutu Gazebo'da bir an
+    # kavrayıcıya kaynar, sonra _release() onu çözer. Dışarıdan bakınca kol
+    # kutuya iner, hiçbir şey olmaz, eve döner - "vakum hiç çalışmıyor" gibi
+    # görünür ama vakum yolunda bir sorun yoktur, doğrulama kapısı kapalıdır.
+    #
+    # 14 Ağu 2026'da tam olarak bu yaşandı: ayar gerçek hücre için taban
+    # dosyada true yapılmıştı ve sim'i sessizce beraberinde götürdü. Bu yüzden
+    # artık iki mod dosyası da kendi değerini AÇIKÇA yazıyor.
+    vacuum_require_confirmation: false
+
+    # Gazebo depth 32FC1/METRE ve PLANAR Z'dir; ikisi de dönüşüm istemez.
+    # Açıkça yazılıyorlar çünkü gerçek kamerada ikisi de FARKLI ve sessizce
+    # yanlış olmaları tam olarak bu iki satırın eksikliğinden geliyordu
+    # (bkz. mode_real.yaml). 32FC1'de depth_scale_m zaten kullanılmaz.
+    depth_scale_m: 0.001
+    depth_is_radial: false
